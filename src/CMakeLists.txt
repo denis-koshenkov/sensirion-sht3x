@@ -1,3 +1,6 @@
 add_executable(test)
 
-target_sources(test PRIVATE test/main.cpp)
+target_sources(test PRIVATE
+    test/main.cpp
+    test/sht3x.cpp
+)
