@@ -1,2 +1,2 @@
-# sensirion-sht3x
-Driver for Sensirion SHT3X temperature &amp; humidity sensor
+# Sensirion SHT3X Driver
+Driver for Sensirion SHT3X temperature & humidity sensor.
