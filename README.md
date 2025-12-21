@@ -2,7 +2,12 @@
 Driver for Sensirion SHT3X temperature & humidity sensor.
 
 # How to build and execute tests
-Execute the commands from the repository root directory.
+Option 1: Use the script:
+```
+./run_test.sh
+```
+
+Option 2: execute the following commands from the repository root directory.
 
 Build test executable:
 ```
