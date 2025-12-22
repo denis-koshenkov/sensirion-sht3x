@@ -1,8 +1,41 @@
 #include "CppUTest/TestHarness.h"
+#include "CppUTestExt/MockSupport.h"
+
+#include "sht3x.h"
+/* Included to know the size of SHT3X instance we need to define to return from mock_sht3x_get_instance_memory. */
+#include "sht3x_private.h"
+#include "mock_cfg_functions.h"
+
+/* To return from mock_sht3x_get_instance_memory */
+static struct SHT3XStruct instance_memory;
 
 TEST_GROUP(SHT3X){};
 
-TEST(SHT3X, FirstTest)
+TEST(SHT3X, CreateReturnsInvalidArgIfGetInstMemoryIsNull)
 {
-    FAIL_TEST("Fail");
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = NULL,
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
+
+    CHECK_EQUAL(SHT3X_RETURN_CODE_INVALID_ARG, rc);
+}
+
+TEST(SHT3X, CreateCallsGetInstanceMemory)
+{
+    void *get_instance_memory_user_data = (void *)0x42;
+    mock()
+        .expectOneCall("mock_sht3x_get_instance_memory")
+        .withParameter("user_data", get_instance_memory_user_data)
+        .andReturnValue((void *)&instance_memory);
+
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = get_instance_memory_user_data,
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
+
+    CHECK_EQUAL(SHT3X_RETURN_CODE_OK, rc);
 }

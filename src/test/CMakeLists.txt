@@ -5,6 +5,8 @@ target_sources(test PRIVATE
     sht3x.cpp
 )
 
+add_subdirectory(mock)
+
 set(TESTS OFF) # Disable cpputest self-tests
 add_subdirectory(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/cpputest
