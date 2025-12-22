@@ -16,10 +16,48 @@ TEST(SHT3X, CreateReturnsInvalidArgIfGetInstMemoryIsNull)
     SHT3X sht3x;
     SHT3XInitConfig cfg = {
         .get_instance_memory = NULL,
+        .get_instance_memory_user_data = (void *)0x1,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
     CHECK_EQUAL(SHT3X_RETURN_CODE_INVALID_ARG, rc);
+}
+
+TEST(SHT3X, CreateReturnsInvalidArgIfCfgIsNull)
+{
+    SHT3X sht3x;
+    uint8_t rc = sht3x_create(&sht3x, NULL);
+
+    CHECK_EQUAL(SHT3X_RETURN_CODE_INVALID_ARG, rc);
+}
+
+TEST(SHT3X, CreateReturnsInvalidArgIfInstanceIsNull)
+{
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = (void *)0x1,
+    };
+    uint8_t rc = sht3x_create(NULL, &cfg);
+
+    CHECK_EQUAL(SHT3X_RETURN_CODE_INVALID_ARG, rc);
+}
+
+TEST(SHT3X, CreateReturnsOutOfMemoryIfGetInstanceMemoryReturnsNull)
+{
+    void *user_data = (void *)0x2;
+    mock()
+        .expectOneCall("mock_sht3x_get_instance_memory")
+        .withParameter("user_data", user_data)
+        .andReturnValue((void *)NULL);
+
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = user_data,
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
+
+    CHECK_EQUAL(SHT3X_RETURN_CODE_OUT_OF_MEMORY, rc);
 }
 
 TEST(SHT3X, CreateCallsGetInstanceMemory)
