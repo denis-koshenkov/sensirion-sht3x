@@ -80,6 +80,9 @@ typedef struct {
  * @param meas Measurement that was read out. Undefined value if @p result_code is not SHT3X_RESULT_CODE_OK. Do not
  * dereference the pointer in that case, it may be NULL.
  * @param user_data User data pointer that was passed to user_data parameter of @ref sht3x_read_single_shot_measurement.
+ *
+ * @note The @p meas pointer only points to valid memory during the execution of this callback. It is not allowed to
+ * dereference this pointer after this callback finished executing.
  */
 typedef void (*SHT3XMeasCompleteCb)(uint8_t result_code, SHT3XMeasurement *meas, void *user_data);
 
