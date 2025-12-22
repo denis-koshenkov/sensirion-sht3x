@@ -8,6 +8,8 @@ extern "C"
 
 void *mock_sht3x_get_instance_memory(void *user_data);
 
+void mock_sht3x_free_instance_memory(void *instance_memory, void *user_data);
+
 #ifdef __cplusplus
 }
 #endif

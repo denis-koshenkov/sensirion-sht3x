@@ -15,3 +15,10 @@ uint8_t sht3x_create(SHT3X *instance, const SHT3XInitConfig *const cfg)
 
     return SHT3X_RETURN_CODE_OK;
 }
+
+void sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data)
+{
+    if (free_instance_memory) {
+        free_instance_memory((void *)self, user_data);
+    }
+}
