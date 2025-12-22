@@ -158,15 +158,20 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     return SHT3X_RESULT_CODE_OK;
 }
 
-void sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
-                                        SHT3XMeasCompleteCb cb, void *user_data)
+uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                           SHT3XMeasCompleteCb cb, void *user_data)
 {
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
 
     uint8_t data[] = SHT3X_CMD_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH_CLK_STRETCH_DIS;
     /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x */
     self->i2c_write(data, sizeof(data), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
 }
 
 void sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data)

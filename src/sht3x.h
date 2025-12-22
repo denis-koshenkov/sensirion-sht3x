@@ -130,8 +130,8 @@ typedef struct {
  */
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
 
-void sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
-                                        SHT3XMeasCompleteCb cb, void *user_data);
+uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                           SHT3XMeasCompleteCb cb, void *user_data);
 
 /**
  * @brief Destroy a SHT3X instance.
