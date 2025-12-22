@@ -108,6 +108,19 @@ typedef struct {
     SHT3X_I2CWrite i2c_write;
 } SHT3XInitConfig;
 
+/**
+ * @brief Create SHT3X instance.
+ *
+ * @param[out] instance Created instance is written to this parameter, if SHT3X_RESULT_CODE_OK is returned. Otherwise,
+ * the value is undefined.
+ * @param[in] cfg Init config. Can be allocated on the stack, it does not have to persist through the entire lifecycle
+ * of the instance. The implementation copies all necessary data to internal structures.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully created instance.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG Invalid argument. @p instance, @p cfg, or one of the required function pointers
+ * in @p cfg is NULL.
+ * @retval SHT3X_RESULT_CODE_OUT_OF_MEMORY cfg->get_instance_memory returned NULL.
+ */
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
 
 void sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
