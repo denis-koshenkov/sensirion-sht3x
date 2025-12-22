@@ -14,11 +14,13 @@
 /* From the datasheet, rounded up */
 #define SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS 16
 #define SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS 7
+#define SHT3X_MAX_MEASUREMENT_DURATION_LOW_REPEATBILITY_MS 5
 
 /* Single shot measurement command codes */
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS 0x24
-#define SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH 0x00
-#define SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_MEDIUM 0x0B
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH 0x00
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM 0x0B
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW 0x16
 
 static bool is_valid_i2c_addr(uint8_t i2c_addr)
 {
@@ -93,6 +95,8 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint32_t
         *period = SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS;
     } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
         *period = SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+        *period = SHT3X_MAX_MEASUREMENT_DURATION_LOW_REPEATBILITY_MS;
     } else {
         /* Invalid repeatability option */
         return SHT3X_RESULT_CODE_INVALID_ARG;
@@ -183,9 +187,11 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
 {
     cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
     if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH;
+        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH;
     } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_MEDIUM;
+        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
     }
     return SHT3X_RESULT_CODE_OK;
 }
