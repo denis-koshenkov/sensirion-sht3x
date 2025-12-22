@@ -30,6 +30,7 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfGetInstMemoryIsNull)
     SHT3XInitConfig cfg = {
         .get_instance_memory = NULL,
         .get_instance_memory_user_data = (void *)0x1,
+        .i2c_write = mock_sht3x_i2c_write,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
@@ -49,6 +50,7 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfInstanceIsNull)
     SHT3XInitConfig cfg = {
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = (void *)0x1,
+        .i2c_write = mock_sht3x_i2c_write,
     };
     uint8_t rc = sht3x_create(NULL, &cfg);
 
@@ -67,6 +69,7 @@ TEST(SHT3XNoSetup, CreateReturnsOutOfMemoryIfGetInstanceMemoryReturnsNull)
     SHT3XInitConfig cfg = {
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = user_data,
+        .i2c_write = mock_sht3x_i2c_write,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
@@ -85,6 +88,7 @@ TEST(SHT3XNoSetup, CreateCallsGetInstanceMemory)
     SHT3XInitConfig cfg = {
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = get_instance_memory_user_data,
+        .i2c_write = mock_sht3x_i2c_write,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
