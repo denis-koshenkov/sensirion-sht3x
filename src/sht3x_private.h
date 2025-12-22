@@ -34,6 +34,8 @@ struct SHT3XStruct {
     uint8_t i2c_addr;
     /* Repeatability option of the current sequence. */
     uint8_t repeatability;
+    /* Clock stretching option of the current sequence. */
+    uint8_t clock_stretching;
 };
 
 #ifdef __cplusplus

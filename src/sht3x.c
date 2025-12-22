@@ -11,6 +11,9 @@
  * value in RH%. */
 #define SHT3X_HUMIDITY_CONVERSION_MAGIC 0.001525902189669f
 
+/* From the datasheet - there must be at least 1 ms delay between two I2C commands received by the sensor. */
+#define SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS 1
+
 /* From the datasheet, rounded up */
 #define SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS 16
 #define SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS 7
@@ -21,6 +24,8 @@
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH 0x00
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM 0x0B
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW 0x16
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN 0x2C
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_HIGH 0x06
 
 static bool is_valid_i2c_addr(uint8_t i2c_addr)
 {
@@ -85,20 +90,44 @@ static float convert_raw_humidity_meas_to_rh(const uint8_t *const raw_humidity)
     return humidity_rh;
 }
 
-static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint32_t *const period)
+/**
+ * @brief Get the number of ms to wait between sending the single shot measurement command and the subsequent read
+ * command.
+ *
+ * @param[in] repeatability Repeatability option for this single shot measurement sequence.
+ * @param[in] clock_stretching Clock stretching option for this single shot measurement sequence.
+ * @param[out] period If SHT3X_RESULT_CODE_OK is returned, the period is written to this parameter.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully computed the period.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p period is NULL, @p repeatability option is invalid, or @p clock_stretching
+ * option is invalid.
+ */
+static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t clock_stretching,
+                                                 uint32_t *const period)
 {
     if (!period) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-        *period = SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS;
-    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-        *period = SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS;
-    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-        *period = SHT3X_MAX_MEASUREMENT_DURATION_LOW_REPEATBILITY_MS;
+    if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
+        /* When clock stretching is enabled, we do not have to wait for measurements to become available before issuing
+         * a read command. We send the read command as soon as mandatory delay elapses, and the sensor holds the SCL
+         * line low until the measurement is ready. When the measurement is ready, the sensor sends the measurement
+         * data. */
+        *period = SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS;
+    } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            *period = SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            *period = SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            *period = SHT3X_MAX_MEASUREMENT_DURATION_LOW_REPEATBILITY_MS;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
     } else {
-        /* Invalid repeatability option */
+        /* Invalid clock stretching option */
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
@@ -161,12 +190,12 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     }
 
     uint32_t timer_period = 0;
-    uint8_t rc = get_single_shot_meas_timer_period(self->repeatability, &timer_period);
+    uint8_t rc = get_single_shot_meas_timer_period(self->repeatability, self->clock_stretching, &timer_period);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* We should never end up here, because we verify repeatability and clock stretching options before starting the
          * sequence. Raise internal error. */
         if (cb) {
-            cb(SHT3X_RESULT_CODE_INTERNAL_ERR, NULL, self->sequence_cb_user_data);
+            cb(SHT3X_RESULT_CODE_DRIVER_ERR, NULL, self->sequence_cb_user_data);
         }
         return;
     }
@@ -185,13 +214,20 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
  */
 static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
 {
-    cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
-    if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH;
-    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
-    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
+    if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
+        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
+        }
+    } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
+        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_HIGH;
+        }
     }
     return SHT3X_RESULT_CODE_OK;
 }
@@ -225,13 +261,15 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 
     uint8_t cmd[2];
     uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
-    // TODO: if rc bad, return it here. Write a test for it
+    // TODO: if rc bad, return here. Write a test for it - we return driver error
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
     self->repeatability = repeatability;
+    self->clock_stretching = clock_stretching;
 
-    /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x */
+    /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
+     */
     self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
