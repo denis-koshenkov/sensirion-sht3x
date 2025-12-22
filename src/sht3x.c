@@ -11,6 +11,18 @@ static bool is_valid_i2c_addr(uint8_t i2c_addr)
     return ((i2c_addr == 0x44) || (i2c_addr == 0x45));
 }
 
+static bool is_valid_cfg(const SHT3XInitConfig *const cfg)
+{
+    // clang-format off
+    return (
+        (cfg)
+        && (cfg->get_instance_memory)
+        && (cfg->i2c_write)
+        && is_valid_i2c_addr(cfg->i2c_addr)
+    );
+    // clang-format on
+}
+
 static void i2c_write_complete_cb(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -20,7 +32,7 @@ static void i2c_write_complete_cb(uint8_t result_code, void *user_data)
 
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
 {
-    if (!instance || !cfg || !(cfg->get_instance_memory) || !(is_valid_i2c_addr(cfg->i2c_addr))) {
+    if (!instance || !is_valid_cfg(cfg)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 

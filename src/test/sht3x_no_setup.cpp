@@ -73,6 +73,20 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgInvalidI2cAddr)
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
 }
 
+TEST(SHT3XNoSetup, CreateReturnsInvalidArgI2cWriteNull)
+{
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = NULL,
+        .i2c_write = NULL,
+        .i2c_addr = 0x45,
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+}
+
 TEST(SHT3XNoSetup, CreateReturnsOutOfMemoryIfGetInstanceMemoryReturnsNull)
 {
     void *user_data = (void *)0x2;
