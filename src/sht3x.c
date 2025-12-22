@@ -43,6 +43,7 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     }
 
     (*instance)->i2c_write = cfg->i2c_write;
+    (*instance)->i2c_addr = cfg->i2c_addr;
 
     return SHT3X_RESULT_CODE_OK;
 }
@@ -54,7 +55,7 @@ void sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8
 
     uint8_t data[] = SHT3X_CMD_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH_CLK_STRETCH_DIS;
     /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in the I2C write complete cb */
-    self->i2c_write(data, sizeof(data), 0x44, i2c_write_complete_cb, (void *)self);
+    self->i2c_write(data, sizeof(data), self->i2c_addr, i2c_write_complete_cb, (void *)self);
 }
 
 void sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data)

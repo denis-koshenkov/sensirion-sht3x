@@ -6,6 +6,8 @@ extern "C"
 {
 #endif
 
+#include <stdint.h>
+
 #include "sht3x_defs.h"
 
 /* This header should be included only by the user module implementing the SHT3XGetInstanceMemory callback which is a
@@ -22,6 +24,7 @@ struct SHT3XStruct {
     /** Callback to execute once the current sequence is complete. Since different sequences can have different callback
      * complete types, use a void *. */
     void *sequence_cb;
+    uint8_t i2c_addr;
 };
 
 #ifdef __cplusplus

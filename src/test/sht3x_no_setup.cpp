@@ -10,8 +10,11 @@
 static struct SHT3XStruct instance_memory;
 
 /* These tests are in a separate test group, because they test sht3x_create, including unhappy scenarios. In the
- * other test group, sht3x_create is called in common setup function before each test. These tests need to be able to
- * call sht3x_create themselves. */
+ * other test group, expected call to mock_sht3x_get_instance_memory is set in the common setup function before each
+ * test. mock_sht3x_get_instance_memory only gets called from sht3x_create in the happy scenario. In order to test
+ * unhappy scenarios, this test group is created, and there are no expected mock calls in the setup function of this
+ * test group.
+ */
 
 // clang-format off
 TEST_GROUP(SHT3XNoSetup)
