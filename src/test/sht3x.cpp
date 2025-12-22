@@ -659,3 +659,27 @@ TEST(SHT3X, ReadSingleShotMeasLowRepeatabilityClkStretch)
     DOUBLES_EQUAL(22.25, meas_complete_cb_meas.temperature, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
     DOUBLES_EQUAL(44.80, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
 }
+
+TEST(SHT3X, ReadSingleShotMeasInvalidRepeatability)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t invalid_repeatability = 0xFF;
+    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, invalid_repeatability, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                                    sht3x_meas_complete_cb, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadSingleShotMeasInvalidClockStretching)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t invalid_clock_stretching = 0xFA;
+    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, invalid_clock_stretching,
+                                                    sht3x_meas_complete_cb, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}

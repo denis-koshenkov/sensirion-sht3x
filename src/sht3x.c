@@ -29,11 +29,27 @@
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM 0x0D
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW 0x10
 
+/**
+ * @brief Check whether SHT3X I2C address is valid.
+ *
+ * @param[in] i2c_addr I2C address.
+ *
+ * @retval true I2C address is valid.
+ * @retval false I2C address is invalid.
+ */
 static bool is_valid_i2c_addr(uint8_t i2c_addr)
 {
     return ((i2c_addr == 0x44) || (i2c_addr == 0x45));
 }
 
+/**
+ * @brief Check whether initialization config is valid.
+ *
+ * @param[in] cfg Initialization config.
+ *
+ * @retval true Config is valid.
+ * @retval false Config is invalid.
+ */
 static bool is_valid_cfg(const SHT3XInitConfig *const cfg)
 {
     // clang-format off
@@ -49,9 +65,46 @@ static bool is_valid_cfg(const SHT3XInitConfig *const cfg)
 }
 
 /**
+ * @brief Check whether repeatability option is valid.
+ *
+ * @param[in] repeatability Repeatability option.
+ *
+ * @retval true Valid option.
+ * @retval false Invalid option.
+ */
+static bool is_valid_repeatability(uint8_t repeatability)
+{
+    // clang-format off
+    return (
+        (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH)
+        || (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM)
+        || (repeatability == SHT3X_MEAS_REPEATABILITY_LOW)
+    );
+    // clang-format on
+}
+
+/**
+ * @brief Check whether clock stretching option is valid.
+ *
+ * @param[in] clock_stretching Clock stretching option.
+ *
+ * @retval true Valid option.
+ * @retval false Invalid option.
+ */
+static bool is_valid_clock_stretching(uint8_t clock_stretching)
+{
+    // clang-format off
+    return (
+        (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED)
+        || (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED)
+    );
+    // clang-format on
+}
+
+/**
  * @brief Convert two bytes in big endian to an integer of type uint16_t.
  *
- * @param bytes The two bytes at this address are used for conversion.
+ * @param[in] bytes The two bytes at this address are used for conversion.
  *
  * @return uint16_t Resulting integer.
  */
@@ -63,7 +116,7 @@ static uint16_t two_big_endian_bytes_to_uint16(const uint8_t *const bytes)
 /**
  * @brief Convert raw temperature measurement to temperature in celsius.
  *
- * @param raw_temp Should point to 2 bytes that are raw temperature measurement read out from the device.
+ * @param[in] raw_temp Should point to 2 bytes that are raw temperature measurement read out from the device.
  *
  * @return float Resulting temperature in Celsius.
  */
@@ -79,7 +132,7 @@ static float convert_raw_temp_meas_to_celsius(const uint8_t *const raw_temp)
 /**
  * @brief Convert raw humidity measurement to humidity in RH%.
  *
- * @param raw_humidity Should point to 2 bytes that are raw humidity measurement read out from the device.
+ * @param[in] raw_humidity Should point to 2 bytes that are raw humidity measurement read out from the device.
  *
  * @return float Resulting humidity in RH%.
  */
@@ -195,7 +248,7 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     uint8_t rc = get_single_shot_meas_timer_period(self->repeatability, self->clock_stretching, &timer_period);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* We should never end up here, because we verify repeatability and clock stretching options before starting the
-         * sequence. Raise internal error. */
+         * sequence. */
         if (cb) {
             cb(SHT3X_RESULT_CODE_DRIVER_ERR, NULL, self->sequence_cb_user_data);
         }
@@ -213,9 +266,15 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
  * @param[out] cmd Must be a uint8_t array of size 2. Command code is written here, if SHT3X_RESULT_CODE_OK is returned.
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully generated command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p cmd is NULL, @p repeatability option is invalid, or @p clock_stretching
+ * option is invalid.
  */
 static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
 {
+    if (!cmd) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
         cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
         if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
@@ -224,6 +283,9 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
             cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
     } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
         cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN;
@@ -233,7 +295,13 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
             cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
+    } else {
+        /* Invalid clock stretching option */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
     }
     return SHT3X_RESULT_CODE_OK;
 }
@@ -261,13 +329,16 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                            SHT3XMeasCompleteCb cb, void *user_data)
 {
-    if (!self) {
+    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
     uint8_t cmd[2];
     uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
-    // TODO: if rc bad, return here. Write a test for it - we return driver error
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and clock stretching options above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
