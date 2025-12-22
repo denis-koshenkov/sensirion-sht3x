@@ -31,6 +31,7 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfGetInstMemoryIsNull)
         .get_instance_memory = NULL,
         .get_instance_memory_user_data = (void *)0x1,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
@@ -51,8 +52,23 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfInstanceIsNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = (void *)0x1,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(NULL, &cfg);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+}
+
+TEST(SHT3XNoSetup, CreateReturnsInvalidArgInvalidI2cAddr)
+{
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = NULL,
+        .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x46, /* Only 0x44 and 0x45 are valid addresses */
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
 
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
 }
@@ -70,6 +86,7 @@ TEST(SHT3XNoSetup, CreateReturnsOutOfMemoryIfGetInstanceMemoryReturnsNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = user_data,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 
@@ -89,6 +106,26 @@ TEST(SHT3XNoSetup, CreateCallsGetInstanceMemory)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = get_instance_memory_user_data,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x44,
+    };
+    uint8_t rc = sht3x_create(&sht3x, &cfg);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+}
+
+TEST(SHT3XNoSetup, CreateSucceedsWithI2cAddr0x45)
+{
+    mock()
+        .expectOneCall("mock_sht3x_get_instance_memory")
+        .withParameter("user_data", (void *)NULL)
+        .andReturnValue((void *)&instance_memory);
+
+    SHT3X sht3x;
+    SHT3XInitConfig cfg = {
+        .get_instance_memory = mock_sht3x_get_instance_memory,
+        .get_instance_memory_user_data = NULL,
+        .i2c_write = mock_sht3x_i2c_write,
+        .i2c_addr = 0x45,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
 

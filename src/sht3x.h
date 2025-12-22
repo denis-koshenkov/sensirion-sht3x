@@ -106,6 +106,8 @@ typedef struct {
     /** User data to pass to get_instance_memory function. */
     void *get_instance_memory_user_data;
     SHT3X_I2CWrite i2c_write;
+    /** Can be only 0x44 or 0x45 according to the datasheet. */
+    uint8_t i2c_addr;
 } SHT3XInitConfig;
 
 /**
@@ -118,7 +120,7 @@ typedef struct {
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully created instance.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG Invalid argument. @p instance, @p cfg, or one of the required function pointers
- * in @p cfg is NULL.
+ * in @p cfg is NULL; or i2c_addr is not a valid SHT3X I2C address.
  * @retval SHT3X_RESULT_CODE_OUT_OF_MEMORY cfg->get_instance_memory returned NULL.
  */
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);

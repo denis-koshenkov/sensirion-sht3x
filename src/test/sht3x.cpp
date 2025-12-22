@@ -63,6 +63,7 @@ TEST_GROUP(SHT3X)
             .get_instance_memory = mock_sht3x_get_instance_memory,
             .get_instance_memory_user_data = NULL,
             .i2c_write = mock_sht3x_i2c_write,
+            .i2c_addr = 0x44,
         };
         uint8_t rc = sht3x_create(&sht3x, &cfg);
         CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
