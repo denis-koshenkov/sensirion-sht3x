@@ -86,10 +86,10 @@ TEST(SHT3X, DestroyCalledWithFreeInstanceMemoryNullDoesNotCrash)
     sht3x_destroy(sht3x, NULL, NULL);
 }
 
-TEST(SHT3X, ReadSingleShotMeasFirstI2cWriteFail)
+TEST(SHT3X, ReadSingleShotMeasFirstI2cWriteFailAddressNack)
 {
     uint8_t i2c_addr = 0x44;
-    /* sht3x_read_single_shot_measurement */
+    /* Single shot meas with high repeatability and clock stretching disabled */
     uint8_t i2c_write_data[] = {0x24, 0x0};
     mock()
         .expectOneCall("mock_sht3x_i2c_write")
@@ -100,8 +100,30 @@ TEST(SHT3X, ReadSingleShotMeasFirstI2cWriteFail)
 
     sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
                                        sht3x_meas_complete_cb, NULL);
-    /* Simulate I2C transaction failure */
+    /* Simulate I2C address NACK */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, i2c_write_complete_cb_user_data);
+
+    CHECK_EQUAL(1, meas_complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_IO_ERR, meas_complete_cb_result_code);
+    POINTERS_EQUAL(NULL, meas_complete_cb_user_data);
+}
+
+TEST(SHT3X, ReadSingleShotMeasFirstI2cWriteFailBusError)
+{
+    uint8_t i2c_addr = 0x44;
+    /* Single shot meas with high repeatability and clock stretching disabled */
+    uint8_t i2c_write_data[] = {0x24, 0x0};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", i2c_addr)
+        .ignoreOtherParameters();
+
+    sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                       sht3x_meas_complete_cb, NULL);
+    /* Simulate I2C bus error */
+    i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_BUS_ERROR, i2c_write_complete_cb_user_data);
 
     CHECK_EQUAL(1, meas_complete_cb_call_count);
     CHECK_EQUAL(SHT3X_RESULT_CODE_IO_ERR, meas_complete_cb_result_code);
