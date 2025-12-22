@@ -21,9 +21,12 @@ extern "C"
  * number of instances. */
 struct SHT3XStruct {
     SHT3X_I2CWrite i2c_write;
+    SHT3X_I2CRead i2c_read;
+    SHT3XStartTimer start_timer;
     /** Callback to execute once the current sequence is complete. Since different sequences can have different callback
-     * complete types, use a void *. */
+     * complete types, use a (void *). */
     void *sequence_cb;
+    void *sequence_cb_user_data;
     uint8_t i2c_addr;
 };
 

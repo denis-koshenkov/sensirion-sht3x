@@ -106,6 +106,8 @@ typedef struct {
     /** User data to pass to get_instance_memory function. */
     void *get_instance_memory_user_data;
     SHT3X_I2CWrite i2c_write;
+    SHT3X_I2CRead i2c_read;
+    SHT3XStartTimer start_timer;
     /** Can be only 0x44 or 0x45 according to the datasheet. */
     uint8_t i2c_addr;
 } SHT3XInitConfig;

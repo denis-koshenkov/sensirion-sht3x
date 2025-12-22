@@ -15,6 +15,11 @@ void mock_sht3x_free_instance_memory(void *instance_memory, void *user_data);
 void mock_sht3x_i2c_write(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
                           void *user_data);
 
+void mock_sht3x_i2c_read(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
+                         void *user_data);
+
+void mock_sht3x_start_timer(uint32_t duration_ms, SHT3XTimerExpiredCb cb, void *user_data);
+
 #ifdef __cplusplus
 }
 #endif

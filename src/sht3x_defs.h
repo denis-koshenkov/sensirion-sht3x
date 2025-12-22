@@ -35,13 +35,20 @@ typedef enum {
 } SHT3X_I2CResultCode;
 
 /**
- * @brief Callback type to execute when a I2C transaction to SHTX is complete.
+ * @brief Callback type to execute when a I2C transaction to SHT3X is complete.
  *
- * @param result_code Pass on of the values from @ref SHT3X_I2CResultCode to describe the transaction result.
- * @param user_data The caller must pass user_data parameter that the SHT3X driver passed to @ref SHT3X_I2CRead or @ref
- * SHT3X_I2CWrite.
+ * @param[in] result_code Pass one of the values from @ref SHT3X_I2CResultCode to describe the transaction result.
+ * @param[in] user_data The caller must pass user_data parameter that the SHT3X driver passed to @ref SHT3X_I2CRead or
+ * @ref SHT3X_I2CWrite.
  */
 typedef void (*SHT3X_I2CTransactionCompleteCb)(uint8_t result_code, void *user_data);
+
+/**
+ * @brief Definition of callback type to execute when a SHT3X timer expires.
+ *
+ * @param user_data User data that was passed to the user_data parameter of @ref SHT3XStartTimer.
+ */
+typedef void (*SHT3XTimerExpiredCb)(void *user_data);
 
 /**
  * @brief Perform a I2C write transaction to the SHT3X device.
@@ -55,6 +62,37 @@ typedef void (*SHT3X_I2CTransactionCompleteCb)(uint8_t result_code, void *user_d
  */
 typedef void (*SHT3X_I2CWrite)(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
                                void *user_data);
+
+/**
+ * @brief Perform a I2C read transaction to the SHT3X device.
+ *
+ * @param[out] data Data that is read from the device is written to this parameter in case of success. I2C read is
+ * successful if the result_code parameter of @p cb is equal to SHT3X_I2C_RESULT_CODE_OK.
+ * @param[in] length Number of bytes in the @p data array.
+ * @param[in] i2c_addr I2C address of the SHT3X device.
+ * @param[in] cb Callback to execute once the I2C transaction is complete. This callback must be executed from the
+ * same context that the SHT3X driver API functions get called from.
+ * @param[in] user_data User data to pass to @p cb.
+ */
+typedef void (*SHT3X_I2CRead)(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
+                              void *user_data);
+
+/**
+ * @brief Execute @p cb after @p duration_ms ms pass.
+ *
+ * The driver calls this function when it needs to have a delay between two actions. For example, a command was sent to
+ * the device, and the result of the command will be available only after some time. The driver will call this function
+ * after it sent the command, and @p cb will contain the implementation of reading the result of the command. The
+ * implementation of this callback should call @p cb after at least @p duration_ms pass.
+ *
+ * @p cb must be executed from the same execution context as all other driver functions are called from.
+ *
+ * @param[in] duration_ms @p cb must be called after at least this number of ms pass.
+ * @param[in] cb Callback to execute.
+ * @param[in] user_data User data to pass to the callback.
+ */
+typedef void (*SHT3XStartTimer)(uint32_t duration_ms, SHT3XTimerExpiredCb cb, void *user_data);
+
 #ifdef __cplusplus
 }
 #endif
