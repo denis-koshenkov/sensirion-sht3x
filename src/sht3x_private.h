@@ -32,6 +32,8 @@ struct SHT3XStruct {
     void *sequence_cb_user_data;
     uint8_t i2c_read_buf[SHT3X_I2C_READ_BUF_SIZE];
     uint8_t i2c_addr;
+    /* Repeatability option of the current sequence. */
+    uint8_t repeatability;
 };
 
 #ifdef __cplusplus

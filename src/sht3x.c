@@ -13,8 +13,12 @@
 
 /* From the datasheet, rounded up */
 #define SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS 16
+#define SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS 7
 
-#define SHT3X_CMD_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH_CLK_STRETCH_DIS {0x24, 0x00}
+/* Single shot measurement command codes */
+#define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS 0x24
+#define SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH 0x00
+#define SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_MEDIUM 0x0B
 
 static bool is_valid_i2c_addr(uint8_t i2c_addr)
 {
@@ -79,6 +83,24 @@ static float convert_raw_humidity_meas_to_rh(const uint8_t *const raw_humidity)
     return humidity_rh;
 }
 
+static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint32_t *const period)
+{
+    if (!period) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+        *period = SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+        *period = SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS;
+    } else {
+        /* Invalid repeatability option */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    return SHT3X_RESULT_CODE_OK;
+}
+
 static void read_single_shot_measurement_part_4(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -87,6 +109,7 @@ static void read_single_shot_measurement_part_4(uint8_t result_code, void *user_
     }
     SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
     if (!cb) {
+        /* Regardless of success/failure, there is no cb to notify the user */
         return;
     }
 
@@ -123,19 +146,48 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     if (!self) {
         return;
     }
+    SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
 
     if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
         /* Previous I2C write failed, execute meas complete cb to indicate failure */
-        SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
-        if (!cb) {
-            return;
+        if (cb) {
+            cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
         }
-        cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
         return;
     }
 
-    self->start_timer(SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS, read_single_shot_measurement_part_3,
-                      (void *)self);
+    uint32_t timer_period = 0;
+    uint8_t rc = get_single_shot_meas_timer_period(self->repeatability, &timer_period);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and clock stretching options before starting the
+         * sequence. Raise internal error. */
+        if (cb) {
+            cb(SHT3X_RESULT_CODE_INTERNAL_ERR, NULL, self->sequence_cb_user_data);
+        }
+        return;
+    }
+
+    self->start_timer(timer_period, read_single_shot_measurement_part_3, (void *)self);
+}
+
+/**
+ * @brief Write single shot measurement command code to @p cmd.
+ *
+ * @param[in] repeatability Repeatability option, use @ref SHT3XMeasRepeatability.
+ * @param[in] clock_stretching Clock stretching option, use @ref SHT3XClockStretching.
+ * @param[out] cmd Must be a uint8_t array of size 2. Command code is written here, if SHT3X_RESULT_CODE_OK is returned.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully generated command.
+ */
+static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
+{
+    cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
+    if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+        cmd[1] = SHT3X_SINGLE_SHOT_MEAS_REPEATABILITY_MEDIUM;
+    }
+    return SHT3X_RESULT_CODE_OK;
 }
 
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
@@ -165,12 +217,16 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
+    uint8_t cmd[2];
+    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
+    // TODO: if rc bad, return it here. Write a test for it
+
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
+    self->repeatability = repeatability;
 
-    uint8_t data[] = SHT3X_CMD_SINGLE_SHOT_MEAS_REPEATABILITY_HIGH_CLK_STRETCH_DIS;
     /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x */
-    self->i2c_write(data, sizeof(data), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
+    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 

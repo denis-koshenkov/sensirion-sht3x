@@ -88,6 +88,7 @@ typedef void (*SHT3XMeasCompleteCb)(uint8_t result_code, SHT3XMeasurement *meas,
 
 typedef enum {
     SHT3X_RESULT_CODE_OK = 0,
+    SHT3X_RESULT_CODE_INTERNAL_ERR,
     SHT3X_RESULT_CODE_INVALID_ARG,
     SHT3X_RESULT_CODE_OUT_OF_MEMORY,
     SHT3X_RESULT_CODE_IO_ERR,
