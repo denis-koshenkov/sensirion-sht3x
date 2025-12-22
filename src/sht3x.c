@@ -21,6 +21,8 @@ static bool is_valid_cfg(const SHT3XInitConfig *const cfg)
         (cfg)
         && (cfg->get_instance_memory)
         && (cfg->i2c_write)
+        && (cfg->i2c_read)
+        && (cfg->start_timer)
         && is_valid_i2c_addr(cfg->i2c_addr)
     );
     // clang-format on
