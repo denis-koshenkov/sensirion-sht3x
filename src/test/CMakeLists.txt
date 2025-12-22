@@ -3,6 +3,7 @@ add_executable(test)
 target_sources(test PRIVATE
     main.cpp
     sht3x.cpp
+    sht3x_no_setup.cpp
 )
 
 add_subdirectory(mock)
