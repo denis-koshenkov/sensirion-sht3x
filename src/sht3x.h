@@ -8,6 +8,8 @@ extern "C"
 
 #include <stdint.h>
 
+#include "sht3x_defs.h"
+
 typedef struct SHT3XStruct *SHT3X;
 
 /**
@@ -39,7 +41,7 @@ typedef struct SHT3XStruct *SHT3X;
  * field in the SHT3XInitConfig passed to @ref sht3x_create.
  *
  * @return void * Pointer to instance memory of size sizeof(struct SHT3XStruct). If failed to get memory, should return
- * NULL. In that case, @ref sht3x_create will return @ref SHT3X_RETURN_CODE_OUT_OF_MEMORY.
+ * NULL. In that case, @ref sht3x_create will return @ref SHT3X_RESULT_CODE_OUT_OF_MEMORY.
  */
 typedef void *(*SHT3XGetInstanceMemory)(void *user_data);
 
@@ -65,19 +67,51 @@ typedef void *(*SHT3XGetInstanceMemory)(void *user_data);
  */
 typedef void (*SHT3XFreeInstanceMemory)(void *instance_memory, void *user_data);
 
+/** Represents a single measurement that can be read out from the device. */
+typedef struct {
+    float temperature; /**< Temperature in degress celsius. */
+    float humidity;    /**< Humidity in RH%. */
+} SHT3XMeasurement;
+
+/**
+ * @brief Callback type to execute when the driver finishes reading out a measurement.
+ *
+ * @param result_code Indicates success or the reason for failure.
+ * @param meas Measurement that was read out. Undefined value if @p result_code is not SHT3X_RESULT_CODE_OK. Do not
+ * dereference the pointer in that case, it may be NULL.
+ * @param user_data User data pointer that was passed to user_data parameter of @ref sht3x_read_single_shot_measurement.
+ */
+typedef void (*SHT3XMeasCompleteCb)(uint8_t result_code, SHT3XMeasurement *meas, void *user_data);
+
 typedef enum {
-    SHT3X_RETURN_CODE_OK = 0,
-    SHT3X_RETURN_CODE_INVALID_ARG,
-    SHT3X_RETURN_CODE_OUT_OF_MEMORY,
-} SHT3XReturnCode;
+    SHT3X_RESULT_CODE_OK = 0,
+    SHT3X_RESULT_CODE_INVALID_ARG,
+    SHT3X_RESULT_CODE_OUT_OF_MEMORY,
+    SHT3X_RESULT_CODE_IO_ERR,
+} SHT3XResultCode;
+
+typedef enum {
+    SHT3X_MEAS_REPEATABILITY_HIGH,
+    SHT3X_MEAS_REPEATABILITY_MEDIUM,
+    SHT3X_MEAS_REPEATABILITY_LOW,
+} SHT3XMeasRepeatability;
+
+typedef enum {
+    SHT3X_CLOCK_STRETCHING_ENABLED,
+    SHT3X_CLOCK_STRETCHING_DISABLED,
+} SHT3XClockStretching;
 
 typedef struct {
     SHT3XGetInstanceMemory get_instance_memory;
     /** User data to pass to get_instance_memory function. */
     void *get_instance_memory_user_data;
+    SHT3X_I2CWrite i2c_write;
 } SHT3XInitConfig;
 
-uint8_t sht3x_create(SHT3X *instance, const SHT3XInitConfig *const cfg);
+uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
+
+void sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                        SHT3XMeasCompleteCb cb, void *user_data);
 
 /**
  * @brief Destroy a SHT3X instance.
