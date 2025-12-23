@@ -121,6 +121,10 @@ typedef enum {
 /** @brief Measurement per second (MPS) options for periodic data acquisition. */
 typedef enum {
     SHT3X_MPS_0_5,
+    SHT3X_MPS_1,
+    SHT3X_MPS_2,
+    SHT3X_MPS_4,
+    SHT3X_MPS_10,
 } SHT3XMps;
 
 typedef struct {
