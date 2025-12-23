@@ -261,6 +261,14 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
                 return;
             }
         }
+        if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_TEMP) {
+            uint8_t expected_temp_crc = sht3x_crc8(&(self->i2c_read_buf[0]));
+            uint8_t actual_temp_crc = self->i2c_read_buf[2];
+            if (expected_temp_crc != actual_temp_crc) {
+                cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
+                return;
+            }
+        }
 
         /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
          * humidity in RH%. */
@@ -367,14 +375,23 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
 static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
 {
     size_t num_bytes = 0;
-    if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
+    if (flags == 0) {
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
         num_bytes = 6;
     } else if (flags & SHT3X_FLAG_READ_HUM) {
         num_bytes = 5;
+    } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
+        num_bytes = 3;
     } else if (flags & SHT3X_FLAG_READ_TEMP) {
         num_bytes = 2;
     } else {
-        // Invalid flag combination, returning 0
+        // Invalid flag combination
+        num_bytes = 0;
     }
     return num_bytes;
 }
