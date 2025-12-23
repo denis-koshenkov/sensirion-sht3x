@@ -1334,3 +1334,54 @@ TEST(SHT3X, ReadMeasSelfNull)
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, meas_complete_cb_call_count);
 }
+
+/* Generic function to test success scenario of start_periodic_measurement function. */
+static void test_start_periodic_meas_success(uint8_t repeatability, uint8_t mps, uint8_t *expected_i2c_write_data,
+                                             void *complete_cb_user_data_expected)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", expected_i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc =
+        sht3x_start_periodic_measurement(sht3x, repeatability, mps, sht3x_complete_cb, complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
+
+    CHECK_EQUAL(1, complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, complete_cb_result_code);
+    POINTERS_EQUAL(complete_cb_user_data_expected, complete_cb_user_data);
+}
+
+TEST(SHT3X, StartPeriodicMeasRepeatHighMpsPoint5)
+{
+    /* Periodic data acquisition: high repeatability, 0.5 mps */
+    uint8_t i2c_write_data[] = {0x20, 0x32};
+    void *complete_cb_user_data_expected = (void *)0xB2;
+    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_0_5, i2c_write_data,
+                                     complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, StartPeriodicMeasRepeatMediumMpsPoint5)
+{
+    /* Periodic data acquisition: medium repeatability, 0.5 mps */
+    uint8_t i2c_write_data[] = {0x20, 0x24};
+    void *complete_cb_user_data_expected = (void *)0xB1;
+    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_0_5, i2c_write_data,
+                                     complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, StartPeriodicMeasRepeatLowMpsPoint5)
+{
+    /* Periodic data acquisition: low repeatability, 0.5 mps */
+    uint8_t i2c_write_data[] = {0x20, 0x2F};
+    void *complete_cb_user_data_expected = (void *)0x1A;
+    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_0_5, i2c_write_data,
+                                     complete_cb_user_data_expected);
+}

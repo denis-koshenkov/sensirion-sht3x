@@ -118,6 +118,11 @@ typedef enum {
     SHT3X_CLOCK_STRETCHING_DISABLED,
 } SHT3XClockStretching;
 
+/** @brief Measurement per second (MPS) options for periodic data acquisition. */
+typedef enum {
+    SHT3X_MPS_0_5,
+} SHT3XMps;
+
 typedef struct {
     SHT3XGetInstanceMemory get_instance_memory;
     /** User data to pass to get_instance_memory function. */
@@ -231,6 +236,9 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
 
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                            SHT3XMeasCompleteCb cb, void *user_data);
+
+uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
+                                         void *user_data);
 
 /**
  * @brief Destroy a SHT3X instance.

@@ -29,6 +29,12 @@
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM 0x0D
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW 0x10
 
+/* Start periodic measurement command codes */
+#define SHT3X_START_PERIODIC_MEAS_MPS_0_5 0x20
+#define SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_HIGH 0x32
+#define SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_MEDIUM 0x24
+#define SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_LOW 0x2F
+
 typedef enum {
     SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
@@ -400,17 +406,24 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     self->start_timer(timer_period, read_single_shot_measurement_part_3, (void *)self);
 }
 
-/**
- * @brief Write single shot measurement command code to @p cmd.
- *
- * @param[in] repeatability Repeatability option, use @ref SHT3XMeasRepeatability.
- * @param[in] clock_stretching Clock stretching option, use @ref SHT3XClockStretching.
- * @param[out] cmd Must be a uint8_t array of size 2. Command code is written here, if SHT3X_RESULT_CODE_OK is returned.
- *
- * @retval SHT3X_RESULT_CODE_OK Successfully generated command.
- * @retval SHT3X_RESULT_CODE_INVALID_ARG @p cmd is NULL, @p repeatability option is invalid, or @p clock_stretching
- * option is invalid.
- */
+static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
+{
+    if (!cmd) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_0_5;
+    if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+        cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_HIGH;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+        cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_MEDIUM;
+    } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+        cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_LOW;
+    }
+
+    return SHT3X_RESULT_CODE_OK;
+}
+
 static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
 {
     if (!cmd) {
@@ -525,6 +538,23 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
     /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
      */
     self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
+                                         void *user_data)
+{
+    uint8_t cmd[2];
+    uint8_t rc = get_start_periodic_meas_cmd(repeatability, mps, cmd);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and mps options above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
