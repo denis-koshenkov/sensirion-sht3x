@@ -246,6 +246,8 @@ uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint
 
 uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
+uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
 /**
  * @brief Destroy a SHT3X instance.
  *
