@@ -165,6 +165,68 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
 uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                                SHT3XCompleteCb cb, void *user_data);
 
+/**
+ * @brief Read previously requested single shot measurements.
+ *
+ * Requesting single shot measurements is done by calling @ref sht3x_send_single_shot_measurement_cmd. That function can
+ * be called with clock stretching enabled or disabled. This option affects the behavior of this function.
+ *
+ * Measurements are not ready right after a single shot measurement command is sent. They take time to be ready. The
+ * times it takes for measurements to be ready depends on the repeatability parameter (high, medium, low) passed to @ref
+ * sht3x_send_single_shot_measurement_cmd. See the datasheet for details.
+ *
+ * If @ref sht3x_send_single_shot_measurement_cmd was called with clock stretching enabled, the I2C transaction
+ * initiated by this function will continue until measurements are ready. Measurements will then be read out in the same
+ * I2C transaction. SHT3X pulls the SCL line low (clock stretching) until the measurements are ready.
+ *
+ * If @ref sht3x_send_single_shot_measurement_cmd was called with clock stretching disabled, and this function is called
+ * before the measurements are ready, there will be a NAK after the address byte on the I2C bus. This is expected
+ * behavior described in the datasheet. In order to notify the caller of this function that this occurred, result_code
+ * parameter in @p cb will be set to @ref SHT3X_RESULT_CODE_NO_DATA.
+ *
+ * In that case, this function will need to be called again later. If the measurements are ready, they will be read out
+ * and result_code parameter in @p cb will be set to @ref SHT3X_RESULT_CODE_OK.
+ *
+ * The following flags can be passed to the @p flags parameter:
+ * - @ref SHT3X_FLAG_READ_TEMP Temperature measurement will be read out. If result_code parameter in @p cb is set to
+ * SHT3X_RESULT_CODE_OK, the temperature measurement is available in the meas parameter of @p cb.
+ * - @ref SHT3X_FLAG_READ_HUM Humidity measurement will be read out. If result_code parameter in @p cb is set to
+ * SHT3X_RESULT_CODE_OK, the humidity measurement is available in the meas parameter of @p cb.
+ * - @ref SHT3X_FLAG_VERIFY_CRC_TEMP Temperature CRC will be verified. If the CRC verification fails, result_code
+ * parameter in @p cb will be SHT3X_RESULT_CODE_CRC_MISMATCH.
+ * - @ref SHT3X_FLAG_VERIFY_CRC_HUM Humidity CRC will be verified. If the CRC verification fails, result_code parameter
+ * in @p cb will be SHT3X_RESULT_CODE_CRC_MISMATCH.
+ *
+ * Rules for setting flags:
+ * - At least one of @ref SHT3X_FLAG_READ_TEMP and @ref SHT3X_FLAG_READ_HUM must be set.
+ * - It is not allowed to set @ref SHT3X_FLAG_VERIFY_CRC_TEMP unless @ref SHT3X_FLAG_READ_TEMP is also set.
+ * - It is not allowed to set @ref SHT3X_FLAG_VERIFY_CRC_HUM unless @ref SHT3X_FLAG_READ_HUM is also set.
+ *
+ * Possible values of result_code parameter in @p cb and their meaning:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully read out measurements. The requested measurements are available in meas
+ * parameter of @p cb. All requested CRC checks were successful.
+ * - @ref SHT3X_RESULT_CODE_CRC_MISMATCH The measurements were read out successfully, but one of the requested CRC
+ * checks failed. Do not access meas parameter in @p cb. There are no measurements available there.
+ * - @ref SHT3X_RESULT_CODE_NO_DATA SHT3X responded with a NAK after the address byte. As described above, this means
+ * that measurements are not ready. If @ref sht3x_send_single_shot_measurement_cmd was called with clock stretching
+ * enabled, this case should be treated as an error.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR Another IO error occurred. Failed to read out measurements.
+ *
+ * @note It is only allowed to access meas parameter in @p cb if result_code parameter in @p cb is @ref
+ * SHT3X_RESULT_CODE_OK. In all other cases, that pointer should not be dereferenced.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] flags Read measurement options.
+ * @param[in] cb Callback to execute once complete. Can be NULL if not required. The result_code parameter will signify
+ * success or reason for failure, and meas parameter will contain a pointer to requested measurements if result_code is
+ * SHT3X_RESULT_CODE_OK. Note that only requested measurements will be available. For example, if only @ref
+ * SHT3X_FLAG_READ_HUM flag was set, meas->temperature inside @p cb has undefined value and should not be used.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully triggered measurement reaodut. Note that this does not mean that
+ * measurement readout was successful - this is indicated by the result_code parameter of @p cb.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, or combination of @p flags is invalid.
+ */
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
