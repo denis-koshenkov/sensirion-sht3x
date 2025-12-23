@@ -249,6 +249,23 @@ uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, voi
 uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
 /**
+ * @brief Send soft reset command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent soft reset command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send reset command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending of soft reset command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
+uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
  * @brief Destroy a SHT3X instance.
  *
  * @param[in] self Instance created by @ref sht3x_create.
