@@ -167,8 +167,8 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t 
     if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
         /* When clock stretching is enabled, we do not have to wait for measurements to become available before issuing
          * a read command. We send the read command as soon as mandatory delay elapses, and the sensor holds the SCL
-         * line low until the measurement is ready. When the measurement is ready, the sensor sends the measurement
-         * data. */
+         * line low until the measurement is ready (clock stretching). When the measurement is ready, the sensor sends
+         * the measurement data. */
         *period = SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS;
     } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
         if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {

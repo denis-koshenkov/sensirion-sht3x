@@ -133,6 +133,24 @@ typedef struct {
  */
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
 
+/**
+ * @brief Send a single shot measurement command to the device.
+ *
+ * This function only sends a command to the device, it does not read out the measurements.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] repeatability Repeatability option, use @ref SHT3XMeasRepeatability.
+ * @param[in] clock_stretching Clock stretching option, use @ref SHT3XClockStretching.
+ * @param[in] cb Callback to execute once the command is complete. Can be NULL if not needed.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, or @p clock_stretching
+ * option is invalid.
+ * @retval SHT3X_RESULT_CODE_IO_ERR I2C transaction failed - SHT3X_I2CWrite function did not return
+ * SHT3X_I2C_RESULT_CODE_OK.
+ * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
+ */
 uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                                SHT3XCompleteCb cb, void *user_data);
 
