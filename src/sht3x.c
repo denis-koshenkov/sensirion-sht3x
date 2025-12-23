@@ -477,6 +477,10 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
 
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     self->sequence_cb = cb;
     self->sequence_cb_user_data = user_data;
     self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;

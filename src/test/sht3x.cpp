@@ -1323,3 +1323,14 @@ TEST(SHT3X, ReadMeasTempHumWrongCrcTempWrongCrcHum)
                                  SHT3X_FLAG_VERIFY_CRC_HUM,
                              meas_complete_cb_user_data_expected);
 }
+
+TEST(SHT3X, ReadMeasSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_read_measurement(NULL, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
