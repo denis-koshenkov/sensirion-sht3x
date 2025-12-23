@@ -189,6 +189,20 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
+static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    SHT3XCompleteCb cb = (SHT3XCompleteCb)self->sequence_cb;
+    if (cb) {
+        uint8_t rc = (result_code == SHT3X_I2C_RESULT_CODE_OK) ? SHT3X_RESULT_CODE_OK : SHT3X_RESULT_CODE_IO_ERR;
+        cb(rc, self->sequence_cb_user_data);
+    }
+}
+
 static void read_single_shot_measurement_part_4(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -323,6 +337,22 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     (*instance)->start_timer = cfg->start_timer;
     (*instance)->i2c_addr = cfg->i2c_addr;
 
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                               SHT3XCompleteCb cb, void *user_data)
+{
+    uint8_t cmd[2];
+    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and clock stretching options above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
