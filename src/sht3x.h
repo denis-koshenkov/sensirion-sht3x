@@ -241,11 +241,60 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                            SHT3XMeasCompleteCb cb, void *user_data);
 
+/**
+ * @brief Send start periodic measurement command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] repeatability Repeatability option. Use @ref SHT3XMeasRepeatability.
+ * @param[in] mps Measurement per second (MPS) option. Use @ref SHT3XMps.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, or @p mps option is
+ * invalid.
+ * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
+ */
 uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
                                          void *user_data);
 
+/**
+ * @brief Send accelerated response time (ART) start periodic measurement command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
 uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
+/**
+ * @brief Send stop periodic measurement command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
 uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
 /**
