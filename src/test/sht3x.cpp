@@ -1044,50 +1044,35 @@ TEST(SHT3X, ReadMeasHum)
     DOUBLES_EQUAL(44.80, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
 }
 
-TEST(SHT3X, ReadMeasFlags0)
+static void test_read_meas_invalid_flags(uint8_t flags)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
     void *meas_complete_cb_user_data_expected = (void *)0xAD;
-    uint8_t rc = sht3x_read_measurement(sht3x, 0, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_measurement(sht3x, flags, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
 
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadMeasFlags0)
+{
+    test_read_meas_invalid_flags(0);
 }
 
 TEST(SHT3X, ReadMeasFlagsCrcHum)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_HUM, sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_VERIFY_CRC_HUM);
 }
 
 TEST(SHT3X, ReadMeasFlagsCrcTemp)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_TEMP, sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP);
 }
 
 TEST(SHT3X, ReadMeasFlagsCrcTempHum)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM,
-                                        sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
 }
 
 TEST(SHT3X, ReadMeasHumCrcHum)
@@ -1150,39 +1135,17 @@ TEST(SHT3X, ReadMeasHumCrcHumWrongCrc)
 
 TEST(SHT3X, ReadMeasFlagsHumCrcTemp)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc =
-        sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP, sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP);
 }
 
 TEST(SHT3X, ReadMeasFlagsHumCrcTempCrcHum)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc =
-        sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM,
-                               sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
 }
 
 TEST(SHT3X, ReadMeasFlagsTempCrcHum)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc =
-        sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM, sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
 }
 
 TEST(SHT3X, ReadMeasTempCrcTemp)
@@ -1222,15 +1185,7 @@ TEST(SHT3X, ReadMeasTempWrongCrc)
 
 TEST(SHT3X, ReadMeasFlagsTempCrcTempCrcHum)
 {
-    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
-
-    uint8_t rc =
-        sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM,
-                               sht3x_meas_complete_cb, NULL);
-
-    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
-    CHECK_EQUAL(0, meas_complete_cb_call_count);
+    test_read_meas_invalid_flags(SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
 }
 
 TEST(SHT3X, ReadMeasTempHumCrcHum)
