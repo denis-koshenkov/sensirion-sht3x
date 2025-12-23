@@ -29,6 +29,11 @@
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM 0x0D
 #define SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW 0x10
 
+typedef enum {
+    SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
+    SHT3X_SEQUENCE_TYPE_READ_MEAS,
+} SHT3xSequenceType;
+
 /**
  * @brief Check whether SHT3X I2C address is valid.
  *
@@ -214,10 +219,13 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
         return;
     }
 
-    if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK) {
+    /* Address NACK is not considered an error as a part of read measurement sequence. It is a valid scenario if the
+     * measurements are not available. To let the caller distinguish between this scenario and a generic IO error,
+     * return a different code when address NACK occurred as a part of read measurement sequence. */
+    bool return_no_data_if_address_nack = (self->sequence_type == SHT3X_SEQUENCE_TYPE_READ_MEAS);
+
+    if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK && return_no_data_if_address_nack) {
         cb(SHT3X_RESULT_CODE_NO_DATA, NULL, self->sequence_cb_user_data);
-    } else if (result_code == SHT3X_I2C_RESULT_CODE_BUS_ERROR) {
-        cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
     } else if (result_code == SHT3X_I2C_RESULT_CODE_OK) {
         /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
          * humidity in RH%. */
@@ -228,36 +236,9 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
         meas.humidity = convert_raw_humidity_meas_to_rh(&(self->i2c_read_buf[3]));
 
         cb(SHT3X_RESULT_CODE_OK, &meas, self->sequence_cb_user_data);
-    }
-}
-
-static void read_single_shot_measurement_part_4(uint8_t result_code, void *user_data)
-{
-    SHT3X self = (SHT3X)user_data;
-    if (!self) {
-        return;
-    }
-    SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
-    if (!cb) {
-        /* Regardless of success/failure, there is no cb to notify the user */
-        return;
-    }
-
-    if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
-        /* Previous I2C read failed, execute meas complete cb to indicate failure */
+    } else {
         cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
-        return;
     }
-
-    /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and humidity in
-     * RH%. */
-    SHT3XMeasurement meas;
-    /* Temperature is the first two bytes in the received data. */
-    meas.temperature = convert_raw_temp_meas_to_celsius(&(self->i2c_read_buf[0]));
-    /* Bytes 3 and 4 in the received data form the raw humidity measurement. */
-    meas.humidity = convert_raw_humidity_meas_to_rh(&(self->i2c_read_buf[3]));
-
-    cb(SHT3X_RESULT_CODE_OK, &meas, self->sequence_cb_user_data);
 }
 
 static void read_single_shot_measurement_part_3(void *user_data)
@@ -267,7 +248,7 @@ static void read_single_shot_measurement_part_3(void *user_data)
         return;
     }
 
-    self->i2c_read(self->i2c_read_buf, 6, self->i2c_addr, read_single_shot_measurement_part_4, (void *)self);
+    self->i2c_read(self->i2c_read_buf, 6, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
 }
 
 static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_data)
@@ -392,6 +373,7 @@ uint8_t sht3x_read_measurement(SHT3X self, uint32_t flags, SHT3XMeasCompleteCb c
 {
     self->sequence_cb = cb;
     self->sequence_cb_user_data = user_data;
+    self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;
 
     self->i2c_read(self->i2c_read_buf, 5, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
 
@@ -414,6 +396,7 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
+    self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
     self->repeatability = repeatability;
     self->clock_stretching = clock_stretching;
 

@@ -32,9 +32,11 @@ struct SHT3XStruct {
     void *sequence_cb_user_data;
     uint8_t i2c_read_buf[SHT3X_I2C_READ_BUF_SIZE];
     uint8_t i2c_addr;
-    /* Repeatability option of the current sequence. */
+    /** Sequence type of the current sequence. One of @ref SHT3xSequenceType. */
+    uint8_t sequence_type;
+    /** Repeatability option of the current sequence. One of @ref SHT3XMeasRepeatability. */
     uint8_t repeatability;
-    /* Clock stretching option of the current sequence. */
+    /** Clock stretching option of the current sequence. One of @ref SHT3XClockStretching. */
     uint8_t clock_stretching;
 };
 
