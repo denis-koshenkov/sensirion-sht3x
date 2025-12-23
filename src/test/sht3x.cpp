@@ -1336,8 +1336,8 @@ TEST(SHT3X, ReadMeasSelfNull)
 }
 
 /* Generic function to test success scenario of start_periodic_measurement function. */
-static void test_start_periodic_meas_success(uint8_t repeatability, uint8_t mps, uint8_t *expected_i2c_write_data,
-                                             void *complete_cb_user_data_expected)
+static void test_start_periodic_meas(uint8_t i2c_write_rc, uint8_t expected_rc, uint8_t repeatability, uint8_t mps,
+                                     uint8_t *expected_i2c_write_data, void *complete_cb_user_data_expected)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
@@ -1352,10 +1352,10 @@ static void test_start_periodic_meas_success(uint8_t repeatability, uint8_t mps,
     uint8_t rc =
         sht3x_start_periodic_measurement(sht3x, repeatability, mps, sht3x_complete_cb, complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
-    i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
 
     CHECK_EQUAL(1, complete_cb_call_count);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, complete_cb_result_code);
+    CHECK_EQUAL(expected_rc, complete_cb_result_code);
     POINTERS_EQUAL(complete_cb_user_data_expected, complete_cb_user_data);
 }
 
@@ -1364,8 +1364,8 @@ TEST(SHT3X, StartPeriodicMeasRepeatHighMpsPoint5)
     /* Start periodic data acquisition: high repeatability, 0.5 mps */
     uint8_t i2c_write_data[] = {0x20, 0x32};
     void *complete_cb_user_data_expected = (void *)0xB2;
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_0_5, i2c_write_data,
-                                     complete_cb_user_data_expected);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_HIGH,
+                             SHT3X_MPS_0_5, i2c_write_data, complete_cb_user_data_expected);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatMediumMpsPoint5)
@@ -1373,8 +1373,8 @@ TEST(SHT3X, StartPeriodicMeasRepeatMediumMpsPoint5)
     /* Start periodic data acquisition: medium repeatability, 0.5 mps */
     uint8_t i2c_write_data[] = {0x20, 0x24};
     void *complete_cb_user_data_expected = (void *)0xB1;
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_0_5, i2c_write_data,
-                                     complete_cb_user_data_expected);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_0_5, i2c_write_data, complete_cb_user_data_expected);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatLowMpsPoint5)
@@ -1382,8 +1382,8 @@ TEST(SHT3X, StartPeriodicMeasRepeatLowMpsPoint5)
     /* Start periodic data acquisition: low repeatability, 0.5 mps */
     uint8_t i2c_write_data[] = {0x20, 0x2F};
     void *complete_cb_user_data_expected = (void *)0x1A;
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_0_5, i2c_write_data,
-                                     complete_cb_user_data_expected);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_LOW,
+                             SHT3X_MPS_0_5, i2c_write_data, complete_cb_user_data_expected);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatHighMps1)
@@ -1391,85 +1391,112 @@ TEST(SHT3X, StartPeriodicMeasRepeatHighMps1)
     /* Start periodic data acquisition: high repeatability, 1 mps */
     uint8_t i2c_write_data[] = {0x21, 0x30};
     void *complete_cb_user_data_expected = (void *)0x3A;
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_1, i2c_write_data,
-                                     complete_cb_user_data_expected);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_1,
+                             i2c_write_data, complete_cb_user_data_expected);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatMediumMps1)
 {
     /* Start periodic data acquisition: medium repeatability, 1 mps */
     uint8_t i2c_write_data[] = {0x21, 0x26};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_1, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_1, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatLowMps1)
 {
     /* Start periodic data acquisition: low repeatability, 1 mps */
     uint8_t i2c_write_data[] = {0x21, 0x2D};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_1, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_1,
+                             i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatHighMps2)
 {
     /* Start periodic data acquisition: high repeatability, 2 mps */
     uint8_t i2c_write_data[] = {0x22, 0x36};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_2, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_2,
+                             i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatMediumMps2)
 {
     /* Start periodic data acquisition: medium repeatability, 2 mps */
     uint8_t i2c_write_data[] = {0x22, 0x20};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_2, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_2, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatLowMps2)
 {
     /* Start periodic data acquisition: low repeatability, 2 mps */
     uint8_t i2c_write_data[] = {0x22, 0x2B};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_2, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_2,
+                             i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatHighMps4)
 {
     /* Start periodic data acquisition: high repeatability, 4 mps */
     uint8_t i2c_write_data[] = {0x23, 0x34};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_4, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_4,
+                             i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatMediumMps4)
 {
     /* Start periodic data acquisition: medium repeatability, 4 mps */
     uint8_t i2c_write_data[] = {0x23, 0x22};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_4, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_4, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatLowMps4)
 {
     /* Start periodic data acquisition: low repeatability, 4 mps */
     uint8_t i2c_write_data[] = {0x23, 0x29};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_4, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_4,
+                             i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatHighMps10)
 {
     /* Start periodic data acquisition: high repeatability, 10 mps */
     uint8_t i2c_write_data[] = {0x27, 0x37};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_10, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_HIGH,
+                             SHT3X_MPS_10, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatMediumMps10)
 {
     /* Start periodic data acquisition: medium repeatability, 10 mps */
     uint8_t i2c_write_data[] = {0x27, 0x21};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_10, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_10, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasRepeatLowMps10)
 {
     /* Start periodic data acquisition: low repeatability, 10 mps */
     uint8_t i2c_write_data[] = {0x27, 0x2A};
-    test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_10, i2c_write_data, NULL);
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_10,
+                             i2c_write_data, NULL);
+}
+
+TEST(SHT3X, StartPeriodicMeasAddressNack)
+{
+    /* Start periodic data acquisition: low repeatability, 10 mps */
+    uint8_t i2c_write_data[] = {0x27, 0x2A};
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_RESULT_CODE_IO_ERR, SHT3X_MEAS_REPEATABILITY_LOW,
+                             SHT3X_MPS_10, i2c_write_data, NULL);
+}
+
+TEST(SHT3X, StartPeriodicMeasBusError)
+{
+    /* Start periodic data acquisition: medium repeatability, 4 mps */
+    uint8_t i2c_write_data[] = {0x23, 0x22};
+    test_start_periodic_meas(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                             SHT3X_MPS_4, i2c_write_data, NULL);
 }
 
 TEST(SHT3X, StartPeriodicMeasSelfNull)
