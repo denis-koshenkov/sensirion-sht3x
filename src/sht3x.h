@@ -315,6 +315,40 @@ uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *us
 uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
 /**
+ * @brief Send enable heater command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
+uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
+ * @brief Send disable heater command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
+uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
  * @brief Destroy a SHT3X instance.
  *
  * @param[in] self Instance created by @ref sht3x_create.

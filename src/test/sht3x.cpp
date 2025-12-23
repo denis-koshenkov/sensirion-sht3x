@@ -1702,3 +1702,109 @@ TEST(SHT3X, SoftResetSelfNull)
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, complete_cb_call_count);
 }
+
+static void test_enable_heater(uint8_t i2c_write_rc, uint8_t expected_rc, void *complete_cb_user_data_expected)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Enable heater command */
+    uint8_t i2c_write_data[] = {0x30, 0x6D};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc = sht3x_enable_heater(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+
+    CHECK_EQUAL(1, complete_cb_call_count);
+    CHECK_EQUAL(expected_rc, complete_cb_result_code);
+    POINTERS_EQUAL(complete_cb_user_data_expected, complete_cb_user_data);
+}
+
+TEST(SHT3X, EnableHeater)
+{
+    void *complete_cb_user_data_expected = (void *)0x66;
+    test_enable_heater(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, EnableHeaterBusError)
+{
+    void *complete_cb_user_data_expected = (void *)0x77;
+    test_enable_heater(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, EnableHeaterAddressNack)
+{
+    void *complete_cb_user_data_expected = (void *)0x99;
+    test_enable_heater(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_RESULT_CODE_IO_ERR, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, EnableHeaterSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0x55;
+    uint8_t rc = sht3x_enable_heater(NULL, sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+static void test_disable_heater(uint8_t i2c_write_rc, uint8_t expected_rc, void *complete_cb_user_data_expected)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Disable heater command */
+    uint8_t i2c_write_data[] = {0x30, 0x66};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc = sht3x_disable_heater(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+
+    CHECK_EQUAL(1, complete_cb_call_count);
+    CHECK_EQUAL(expected_rc, complete_cb_result_code);
+    POINTERS_EQUAL(complete_cb_user_data_expected, complete_cb_user_data);
+}
+
+TEST(SHT3X, DisableHeater)
+{
+    void *complete_cb_user_data_expected = (void *)0x43;
+    test_disable_heater(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, DisableHeaterAddressNack)
+{
+    void *complete_cb_user_data_expected = (void *)0x48;
+    test_disable_heater(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_RESULT_CODE_IO_ERR, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, DisableHeaterBusError)
+{
+    void *complete_cb_user_data_expected = (void *)0xFF;
+    test_disable_heater(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, DisableHeaterSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0xDD;
+    uint8_t rc = sht3x_disable_heater(NULL, sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}

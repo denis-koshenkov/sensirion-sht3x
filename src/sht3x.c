@@ -63,6 +63,14 @@
 #define SHT3X_SOFT_RESET_CMD_MSB 0x30
 #define SHT3X_SOFT_RESET_CMD_LSB 0xA2
 
+/* Enable heater command code */
+#define SHT3X_ENABLE_HEATER_CMD_MSB 0x30
+#define SHT3X_ENABLE_HEATER_CMD_LSB 0x6D
+
+/* Disable heater command code */
+#define SHT3X_DISABLE_HEATER_CMD_MSB 0x30
+#define SHT3X_DISABLE_HEATER_CMD_LSB 0x66
+
 typedef enum {
     SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
@@ -686,6 +694,36 @@ uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data)
     }
 
     uint8_t cmd[2] = {SHT3X_SOFT_RESET_CMD_MSB, SHT3X_SOFT_RESET_CMD_LSB};
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2] = {SHT3X_ENABLE_HEATER_CMD_MSB, SHT3X_ENABLE_HEATER_CMD_LSB};
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2] = {SHT3X_DISABLE_HEATER_CMD_MSB, SHT3X_DISABLE_HEATER_CMD_LSB};
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
