@@ -1471,3 +1471,44 @@ TEST(SHT3X, StartPeriodicMeasRepeatLowMps10)
     uint8_t i2c_write_data[] = {0x27, 0x2A};
     test_start_periodic_meas_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_10, i2c_write_data, NULL);
 }
+
+TEST(SHT3X, StartPeriodicMeasSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0x69;
+    uint8_t rc = sht3x_start_periodic_measurement(NULL, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_MPS_10, sht3x_complete_cb,
+                                                  user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+TEST(SHT3X, StartPeriodicMeasInvalidRepeatability)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0x92;
+    uint8_t invalid_repeatability = 0xF9;
+    uint8_t rc =
+        sht3x_start_periodic_measurement(sht3x, invalid_repeatability, SHT3X_MPS_2, sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+TEST(SHT3X, StartPeriodicMeasInvalidMps)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0x8C;
+    uint8_t invalid_mps = 0xFA;
+    uint8_t rc = sht3x_start_periodic_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, invalid_mps, sht3x_complete_cb,
+                                                  user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}

@@ -129,6 +129,27 @@ static bool is_valid_clock_stretching(uint8_t clock_stretching)
 }
 
 /**
+ * @brief Check whether MPS option is valid.
+ *
+ * @param[in] mps MPS option.
+ *
+ * @retval true Valid option.
+ * @retval false Invalid option.
+ */
+static bool is_valid_mps(uint8_t mps)
+{
+    // clang-format off
+    return (
+        (mps == SHT3X_MPS_0_5)
+        || (mps == SHT3X_MPS_1)
+        || (mps == SHT3X_MPS_2)
+        || (mps == SHT3X_MPS_4)
+        || (mps == SHT3X_MPS_10)
+    );
+    // clang-format on
+}
+
+/**
  * @brief Convert two bytes in big endian to an integer of type uint16_t.
  *
  * @param[in] bytes The two bytes at this address are used for conversion.
@@ -598,6 +619,10 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
                                          void *user_data)
 {
+    if (!self || !is_valid_repeatability(repeatability) || !is_valid_mps(mps)) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     uint8_t cmd[2];
     uint8_t rc = get_start_periodic_meas_cmd(repeatability, mps, cmd);
     if (rc != SHT3X_RESULT_CODE_OK) {
