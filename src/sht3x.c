@@ -203,6 +203,34 @@ static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
     }
 }
 
+static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+    SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
+    if (!cb) {
+        return;
+    }
+
+    if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK) {
+        cb(SHT3X_RESULT_CODE_NO_DATA, NULL, self->sequence_cb_user_data);
+    } else if (result_code == SHT3X_I2C_RESULT_CODE_BUS_ERROR) {
+        cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
+    } else if (result_code == SHT3X_I2C_RESULT_CODE_OK) {
+        /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
+         * humidity in RH%. */
+        SHT3XMeasurement meas;
+        /* Temperature is the first two bytes in the received data. */
+        meas.temperature = convert_raw_temp_meas_to_celsius(&(self->i2c_read_buf[0]));
+        /* Bytes 3 and 4 in the received data form the raw humidity measurement. */
+        meas.humidity = convert_raw_humidity_meas_to_rh(&(self->i2c_read_buf[3]));
+
+        cb(SHT3X_RESULT_CODE_OK, &meas, self->sequence_cb_user_data);
+    }
+}
+
 static void read_single_shot_measurement_part_4(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -357,6 +385,16 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
     self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_read_measurement(SHT3X self, uint32_t flags, SHT3XMeasCompleteCb cb, void *user_data)
+{
+    self->sequence_cb = cb;
+    self->sequence_cb_user_data = user_data;
+
+    self->i2c_read(self->i2c_read_buf, 5, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
+
     return SHT3X_RESULT_CODE_OK;
 }
 
