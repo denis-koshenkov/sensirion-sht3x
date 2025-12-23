@@ -93,9 +93,9 @@ typedef void (*SHT3XCompleteCb)(uint8_t result_code, void *user_data);
 /** @brief Flag indicating that humidity measurement will be read. */
 #define SHT3X_FLAG_READ_HUM (1UL << 1)
 /** @brief Flag indicating that temperature measurement CRC will be validated. */
-#define SHT3X_FLAG_VERIFY_TEMP_CRC (1UL << 2)
+#define SHT3X_FLAG_VERIFY_CRC_TEMP (1UL << 2)
 /** @brief Flag indicating that humidity measurement CRC will be validated. */
-#define SHT3X_FLAG_VERIFY_HUM_CRC (1UL << 3)
+#define SHT3X_FLAG_VERIFY_CRC_HUM (1UL << 3)
 
 typedef enum {
     SHT3X_RESULT_CODE_OK = 0,

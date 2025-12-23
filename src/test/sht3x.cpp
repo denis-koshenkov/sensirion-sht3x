@@ -388,7 +388,7 @@ TEST(SHT3X, ReadSingleShotMeasSuccess2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 16).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -479,7 +479,7 @@ TEST(SHT3X, ReadSingleShotMeasMediumRepeatability)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 7).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -523,7 +523,7 @@ TEST(SHT3X, ReadSingleShotMeasLowRepeatability)
         .withParameter("i2c_addr", i2c_addr)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 5).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -565,7 +565,7 @@ TEST(SHT3X, ReadSingleShotMeasHighRepeatabilityClkStretch)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -607,7 +607,7 @@ TEST(SHT3X, ReadSingleShotMeasMediumRepeatabilityClkStretch)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -649,7 +649,7 @@ TEST(SHT3X, ReadSingleShotMeasLowRepeatabilityClkStretch)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
     mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -901,7 +901,7 @@ TEST(SHT3X, ReadMeasTempAndHumNoCrc)
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
     /* Expecting to read 5 bytes, because the 6th byte is the humidity CRC, and we are not verifying humidity CRC. */
     mock()
@@ -976,7 +976,7 @@ TEST(SHT3X, ReadMeasCbNull)
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
-    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
     uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
@@ -990,4 +990,128 @@ TEST(SHT3X, ReadMeasCbNull)
     i2c_read_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_read_complete_cb_user_data);
 
     /* Nothing to check, this test makes sure that program does not crash when meas_complete_cb is NULL */
+}
+
+TEST(SHT3X, ReadMeasTemp)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Taken from real device output, temp 22.25 Celsius */
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_read")
+        .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    void *meas_complete_cb_user_data_expected = (void *)0xDA;
+    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb,
+                                        meas_complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_read_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_read_complete_cb_user_data);
+
+    CHECK_EQUAL(1, meas_complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, meas_complete_cb_result_code);
+    POINTERS_EQUAL(meas_complete_cb_user_data_expected, meas_complete_cb_user_data);
+    DOUBLES_EQUAL(22.25, meas_complete_cb_meas.temperature, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+}
+
+TEST(SHT3X, ReadMeasHum)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Taken from real device output, humidity 44.8 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_read")
+        .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
+        .withParameter("length", 5)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    void *meas_complete_cb_user_data_expected = (void *)0xAD;
+    uint8_t rc =
+        sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_read_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_read_complete_cb_user_data);
+
+    CHECK_EQUAL(1, meas_complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, meas_complete_cb_result_code);
+    POINTERS_EQUAL(meas_complete_cb_user_data_expected, meas_complete_cb_user_data);
+    DOUBLES_EQUAL(44.80, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+}
+
+TEST(SHT3X, ReadMeasFlags0)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *meas_complete_cb_user_data_expected = (void *)0xAD;
+    uint8_t rc = sht3x_read_measurement(sht3x, 0, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadMeasFlagsCrcHum)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_HUM, sht3x_meas_complete_cb, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadMeasFlagsCrcTemp)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_TEMP, sht3x_meas_complete_cb, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadMeasFlagsCrcTempHum)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM,
+                                        sht3x_meas_complete_cb, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadMeasHumCrcHum)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Taken from real device output, temp 22.25 Celsius, humidity 45.24 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_read")
+        .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
+        .withParameter("length", 6)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    void *meas_complete_cb_user_data_expected = (void *)0x24;
+    uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM, sht3x_meas_complete_cb,
+                                        meas_complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_read_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_read_complete_cb_user_data);
+
+    CHECK_EQUAL(1, meas_complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, meas_complete_cb_result_code);
+    POINTERS_EQUAL(meas_complete_cb_user_data_expected, meas_complete_cb_user_data);
+    DOUBLES_EQUAL(44.80, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
 }

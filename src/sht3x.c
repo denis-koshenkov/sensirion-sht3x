@@ -329,6 +329,33 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
+static size_t map_read_meas_flags_to_num_bytes_to_read(uint32_t flags)
+{
+    size_t num_bytes = 0;
+    if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
+        num_bytes = 6;
+    } else if (flags & SHT3X_FLAG_READ_HUM) {
+        num_bytes = 5;
+    } else if (flags & SHT3X_FLAG_READ_TEMP) {
+        num_bytes = 2;
+    } else {
+        // Invalid flag combination, returning 0
+    }
+    return num_bytes;
+}
+
+static uint8_t sht3x_read_measurement_impl(SHT3X self, uint32_t flags)
+{
+    size_t length = map_read_meas_flags_to_num_bytes_to_read(flags);
+    if (length == 0) {
+        /* Invalid combination of flags */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
 {
     if (!instance || !is_valid_cfg(cfg)) {
@@ -375,9 +402,7 @@ uint8_t sht3x_read_measurement(SHT3X self, uint32_t flags, SHT3XMeasCompleteCb c
     self->sequence_cb_user_data = user_data;
     self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;
 
-    self->i2c_read(self->i2c_read_buf, 5, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
-
-    return SHT3X_RESULT_CODE_OK;
+    return sht3x_read_measurement_impl(self, flags);
 }
 
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
