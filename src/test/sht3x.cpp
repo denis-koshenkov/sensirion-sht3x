@@ -854,3 +854,44 @@ TEST(SHT3X, SingleShotMeasCmdLowRepeatabilityClkStretching)
     test_single_shot_meas_cmd_success(SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_CLOCK_STRETCHING_ENABLED, i2c_write_data,
                                       complete_cb_user_data_expected);
 }
+
+TEST(SHT3X, SendSingleShotMeasCmdSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0xBC;
+    uint8_t rc = sht3x_send_single_shot_measurement_cmd(NULL, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                                                        SHT3X_CLOCK_STRETCHING_ENABLED, sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+TEST(SHT3X, SendSingleShotMeasCmdInvalidRepeatability)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t invalid_repeatability = 0xAF;
+    void *user_data = (void *)0x2C;
+    uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, invalid_repeatability, SHT3X_CLOCK_STRETCHING_ENABLED,
+                                                        sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+TEST(SHT3X, SendSingleShotMeasCmdInvalidClkStretching)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t invalid_clock_stretching = 0xF0;
+    void *user_data = (void *)0x66;
+    uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, invalid_clock_stretching,
+                                                        sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}

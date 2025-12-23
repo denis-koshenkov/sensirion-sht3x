@@ -343,6 +343,10 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
 uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                                SHT3XCompleteCb cb, void *user_data)
 {
+    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     uint8_t cmd[2];
     uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
     if (rc != SHT3X_RESULT_CODE_OK) {
