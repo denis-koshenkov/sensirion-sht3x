@@ -89,13 +89,13 @@ typedef void (*SHT3XMeasCompleteCb)(uint8_t result_code, SHT3XMeasurement *meas,
 typedef void (*SHT3XCompleteCb)(uint8_t result_code, void *user_data);
 
 /** @brief Flag indicating that temperature measurement will be read. */
-#define SHT3X_FLAG_READ_TEMP (1UL << 0)
+#define SHT3X_FLAG_READ_TEMP (1U << 0)
 /** @brief Flag indicating that humidity measurement will be read. */
-#define SHT3X_FLAG_READ_HUM (1UL << 1)
+#define SHT3X_FLAG_READ_HUM (1U << 1)
 /** @brief Flag indicating that temperature measurement CRC will be validated. */
-#define SHT3X_FLAG_VERIFY_CRC_TEMP (1UL << 2)
+#define SHT3X_FLAG_VERIFY_CRC_TEMP (1U << 2)
 /** @brief Flag indicating that humidity measurement CRC will be validated. */
-#define SHT3X_FLAG_VERIFY_CRC_HUM (1UL << 3)
+#define SHT3X_FLAG_VERIFY_CRC_HUM (1U << 3)
 
 typedef enum {
     SHT3X_RESULT_CODE_OK = 0,
@@ -104,6 +104,7 @@ typedef enum {
     SHT3X_RESULT_CODE_OUT_OF_MEMORY,
     SHT3X_RESULT_CODE_IO_ERR,
     SHT3X_RESULT_CODE_NO_DATA,
+    SHT3X_RESULT_CODE_CRC_MISMATCH,
 } SHT3XResultCode;
 
 typedef enum {
@@ -164,7 +165,7 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
 uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                                SHT3XCompleteCb cb, void *user_data);
 
-uint8_t sht3x_read_measurement(SHT3X self, uint32_t flags, SHT3XMeasCompleteCb cb, void *user_data);
+uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                            SHT3XMeasCompleteCb cb, void *user_data);

@@ -119,6 +119,32 @@ static uint16_t two_big_endian_bytes_to_uint16(const uint8_t *const bytes)
 }
 
 /**
+ * @brief Run SHT3X CRC algorithm on two bytes.
+ *
+ * @param data Two bytes at this address are used for CRC calculation.
+
+ * @return uint8_t Resulting CRC.
+ */
+static uint8_t sht3x_crc8(const uint8_t *const data)
+{
+    uint8_t crc = 0xFF;
+    const uint8_t poly = 0x31;
+
+    for (size_t i = 0; i < 2; i++) {
+        crc ^= data[i];
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ poly;
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+
+    return crc;
+}
+
+/**
  * @brief Convert raw temperature measurement to temperature in celsius.
  *
  * @param[in] raw_temp Should point to 2 bytes that are raw temperature measurement read out from the device.
@@ -227,6 +253,15 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
     if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK && return_no_data_if_address_nack) {
         cb(SHT3X_RESULT_CODE_NO_DATA, NULL, self->sequence_cb_user_data);
     } else if (result_code == SHT3X_I2C_RESULT_CODE_OK) {
+        if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_HUM) {
+            uint8_t expected_hum_crc = sht3x_crc8(&(self->i2c_read_buf[3]));
+            uint8_t actual_hum_crc = self->i2c_read_buf[5];
+            if (expected_hum_crc != actual_hum_crc) {
+                cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
+                return;
+            }
+        }
+
         /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
          * humidity in RH%. */
         SHT3XMeasurement meas;
@@ -329,7 +364,7 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
-static size_t map_read_meas_flags_to_num_bytes_to_read(uint32_t flags)
+static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
 {
     size_t num_bytes = 0;
     if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
@@ -344,7 +379,7 @@ static size_t map_read_meas_flags_to_num_bytes_to_read(uint32_t flags)
     return num_bytes;
 }
 
-static uint8_t sht3x_read_measurement_impl(SHT3X self, uint32_t flags)
+static uint8_t sht3x_read_measurement_impl(SHT3X self, uint8_t flags)
 {
     size_t length = map_read_meas_flags_to_num_bytes_to_read(flags);
     if (length == 0) {
@@ -396,11 +431,12 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
     return SHT3X_RESULT_CODE_OK;
 }
 
-uint8_t sht3x_read_measurement(SHT3X self, uint32_t flags, SHT3XMeasCompleteCb cb, void *user_data)
+uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
     self->sequence_cb = cb;
     self->sequence_cb_user_data = user_data;
     self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;
+    self->sequence_flags = flags;
 
     return sht3x_read_measurement_impl(self, flags);
 }

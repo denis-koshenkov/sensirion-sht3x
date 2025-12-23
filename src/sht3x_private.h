@@ -38,6 +38,8 @@ struct SHT3XStruct {
     uint8_t repeatability;
     /** Clock stretching option of the current sequence. One of @ref SHT3XClockStretching. */
     uint8_t clock_stretching;
+    /** Flags for the current sequence. */
+    uint8_t sequence_flags;
 };
 
 #ifdef __cplusplus
