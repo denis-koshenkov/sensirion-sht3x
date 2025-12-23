@@ -247,41 +247,55 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
 
     /* Address NACK is not considered an error as a part of read measurement sequence. It is a valid scenario if the
      * measurements are not available. To let the caller distinguish between this scenario and a generic IO error,
-     * return a different code when address NACK occurred as a part of read measurement sequence. */
+     * return a different code when address NACK occurred as a part of read measurement sequence.
+     *
+     * All other sequences are implemented in a way that address NACK should never happen, so for all other sequences it
+     * is considered an IO error. */
     bool return_no_data_if_address_nack = (self->sequence_type == SHT3X_SEQUENCE_TYPE_READ_MEAS);
-
     if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK && return_no_data_if_address_nack) {
         cb(SHT3X_RESULT_CODE_NO_DATA, NULL, self->sequence_cb_user_data);
-    } else if (result_code == SHT3X_I2C_RESULT_CODE_OK) {
-        if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_HUM) {
-            uint8_t expected_hum_crc = sht3x_crc8(&(self->i2c_read_buf[3]));
-            uint8_t actual_hum_crc = self->i2c_read_buf[5];
-            if (expected_hum_crc != actual_hum_crc) {
-                cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
-                return;
-            }
-        }
-        if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_TEMP) {
-            uint8_t expected_temp_crc = sht3x_crc8(&(self->i2c_read_buf[0]));
-            uint8_t actual_temp_crc = self->i2c_read_buf[2];
-            if (expected_temp_crc != actual_temp_crc) {
-                cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
-                return;
-            }
-        }
+        return;
+    } else if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
+        cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
+        return;
+    }
 
-        /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
-         * humidity in RH%. */
-        SHT3XMeasurement meas;
+    /* I2C transaction successful. Interpret the received bytes according to the flags. */
+
+    /* Verify CRCs if the corresponding flags are set */
+    if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_HUM) {
+        uint8_t expected_hum_crc = sht3x_crc8(&(self->i2c_read_buf[3]));
+        uint8_t actual_hum_crc = self->i2c_read_buf[5];
+        if (expected_hum_crc != actual_hum_crc) {
+            cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
+            return;
+        }
+    }
+    if (self->sequence_flags & SHT3X_FLAG_VERIFY_CRC_TEMP) {
+        uint8_t expected_temp_crc = sht3x_crc8(&(self->i2c_read_buf[0]));
+        uint8_t actual_temp_crc = self->i2c_read_buf[2];
+        if (expected_temp_crc != actual_temp_crc) {
+            cb(SHT3X_RESULT_CODE_CRC_MISMATCH, NULL, self->sequence_cb_user_data);
+            return;
+        }
+    }
+
+    /* i2c_read_buf now contains the raw measurements. Need to convert them to temperature in Celsius and
+     * humidity in RH%. */
+    SHT3XMeasurement meas = {
+        .temperature = 0,
+        .humidity = 0,
+    };
+    if (self->sequence_flags & SHT3X_FLAG_READ_TEMP) {
         /* Temperature is the first two bytes in the received data. */
         meas.temperature = convert_raw_temp_meas_to_celsius(&(self->i2c_read_buf[0]));
+    }
+    if (self->sequence_flags & SHT3X_FLAG_READ_HUM) {
         /* Bytes 3 and 4 in the received data form the raw humidity measurement. */
         meas.humidity = convert_raw_humidity_meas_to_rh(&(self->i2c_read_buf[3]));
-
-        cb(SHT3X_RESULT_CODE_OK, &meas, self->sequence_cb_user_data);
-    } else {
-        cb(SHT3X_RESULT_CODE_IO_ERR, NULL, self->sequence_cb_user_data);
     }
+
+    cb(SHT3X_RESULT_CODE_OK, &meas, self->sequence_cb_user_data);
 }
 
 static void read_single_shot_measurement_part_3(void *user_data)
@@ -372,22 +386,35 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
+/**
+ * @brief Map read measurement flags to number of bytes to read from the device.
+ *
+ * @param flags Flags.
+ *
+ * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
+ */
 static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
 {
     size_t num_bytes = 0;
     if (flags == 0) {
+        /* We should be reading at least either temperature or humidity */
         num_bytes = 0;
     } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
+        /* Cannot verify temperature CRC if we are not reading temperature */
         num_bytes = 0;
     } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
+        /* Cannot verify humidity CRC if we are not reading humidity */
         num_bytes = 0;
     } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
         num_bytes = 6;
     } else if (flags & SHT3X_FLAG_READ_HUM) {
+        /* Last byte is humidity CRC, omit it since we are not verifying humidity CRC */
         num_bytes = 5;
     } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
+        /* Last three bytes are humidity meas and its crc, no need to read them out */
         num_bytes = 3;
     } else if (flags & SHT3X_FLAG_READ_TEMP) {
+        /* Third byte is temperature CRC, omit it since we are not verifying temperature CRC */
         num_bytes = 2;
     } else {
         // Invalid flag combination
