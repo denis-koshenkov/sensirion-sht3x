@@ -1921,7 +1921,8 @@ TEST(SHT3X, FetchPeriodicMeasDataSelfNull)
     CHECK_EQUAL(0, complete_cb_call_count);
 }
 
-static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, uint8_t expected_complete_cb_rc,
+static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, uint8_t *i2c_read_data,
+                                           size_t i2c_data_len, uint8_t i2c_read_rc, uint8_t expected_complete_cb_rc,
                                            void *complete_cb_user_data_expected)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
@@ -1935,19 +1936,107 @@ static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, 
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        if (i2c_read_data != NULL) {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
+                .withParameter("length", i2c_data_len)
+                .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .ignoreOtherParameters();
+        } else {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withParameter("length", i2c_data_len)
+                .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .ignoreOtherParameters();
+        }
+    }
 
     uint8_t rc = sht3x_read_periodic_measurement(sht3x, flags, sht3x_meas_complete_cb, complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        timer_expired_cb(timer_expired_cb_user_data);
+        i2c_read_complete_cb(i2c_read_rc, i2c_read_complete_cb_user_data);
+    }
 
     CHECK_EQUAL(1, meas_complete_cb_call_count);
     CHECK_EQUAL(expected_complete_cb_rc, meas_complete_cb_result_code);
     POINTERS_EQUAL(complete_cb_user_data_expected, meas_complete_cb_user_data);
 }
 
+static void test_read_periodic_measurement_invalid_flags(uint8_t flags)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_read_periodic_measurement(sht3x, flags, sht3x_meas_complete_cb, (void *)0x55);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
 TEST(SHT3X, ReadPeriodicMeasFetchDataAddressNack)
 {
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
+    /* Don't care */
+    uint8_t *i2c_read_data = NULL;
+    size_t i2c_data_len = 0;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
+    /* Care again */
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
     void *complete_cb_user_data_expected = (void *)0xAF;
-    test_read_periodic_measurement(SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK,
-                                   SHT3X_RESULT_CODE_IO_ERR, complete_cb_user_data_expected);
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, ReadPeriodicMeasFetchDataBusError)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_BUS_ERROR;
+    /* Don't care */
+    uint8_t *i2c_read_data = NULL;
+    size_t i2c_data_len = 0;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
+    /* Care again */
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
+    void *complete_cb_user_data_expected = (void *)0xB0;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, ReadPeriodicMeasReadMeasAddressNack)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* No data since I2C read results in address NACK */
+    uint8_t *i2c_read_data = NULL;
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_NO_DATA;
+    void *complete_cb_user_data_expected = (void *)0xB1;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, ReadPeriodicMeasReadMeasBusError)
+{
+    uint8_t flags = SHT3X_FLAG_READ_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_BUS_ERROR;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
+    void *complete_cb_user_data_expected = (void *)0xB2;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, ReadPeriodicMeasFlags0)
+{
+    test_read_periodic_measurement_invalid_flags(0);
 }

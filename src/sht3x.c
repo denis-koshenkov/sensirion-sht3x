@@ -80,8 +80,9 @@
 #define SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB 0x0
 
 typedef enum {
-    SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
+    SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
+    SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS,
 } SHT3xSequenceType;
 
 /**
@@ -343,13 +344,15 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
         return;
     }
 
-    /* Address NACK is not considered an error as a part of read measurement sequence. It is a valid scenario if the
-     * measurements are not available. To let the caller distinguish between this scenario and a generic IO error,
-     * return a different code when address NACK occurred as a part of read measurement sequence.
+    /* Address NACK is not considered an error as a part of read measurement or read periodic measurement sequences. It
+     * is a valid scenario if the measurements are not available. To let the caller distinguish between this scenario
+     * and a generic IO error, return a different code when address NACK occurred as a part of read measurement
+     * sequence.
      *
      * All other sequences are implemented in a way that address NACK should never happen, so for all other sequences it
      * is considered an IO error. */
-    bool return_no_data_if_address_nack = (self->sequence_type == SHT3X_SEQUENCE_TYPE_READ_MEAS);
+    bool return_no_data_if_address_nack = ((self->sequence_type == SHT3X_SEQUENCE_TYPE_READ_MEAS) ||
+                                           (self->sequence_type == SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS));
     if (result_code == SHT3X_I2C_RESULT_CODE_ADDRESS_NACK && return_no_data_if_address_nack) {
         execute_meas_complete_cb(self, SHT3X_RESULT_CODE_NO_DATA, NULL);
         return;
@@ -394,6 +397,26 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
     }
 
     execute_meas_complete_cb(self, SHT3X_RESULT_CODE_OK, &meas);
+}
+
+/**
+ * @brief Check whether @p flags is a valid combination of read flags.
+ *
+ * @param flags Flags combination.
+ *
+ * @retval true Flags combination is valid.
+ * @retval false Flags combination is invalid.
+ */
+static bool read_flags_valid(uint8_t flags)
+{
+    // clang-format off
+    bool flags_invalid = (
+        (!(flags & SHT3X_FLAG_READ_TEMP) && !(flags & SHT3X_FLAG_READ_HUM))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM))
+    );
+    // clang-format on
+    return !flags_invalid;
 }
 
 /**
@@ -484,6 +507,20 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     self->start_timer(timer_period, read_single_shot_measurement_part_3, (void *)self);
 }
 
+static void read_periodic_measurement_part_3(void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    uint8_t rc = sht3x_read_measurement_impl(self, self->sequence_flags);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* Flags are invalid, this should never happen */
+        execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
+    }
+}
+
 static void read_periodic_measurement_part_2(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -491,7 +528,14 @@ static void read_periodic_measurement_part_2(uint8_t result_code, void *user_dat
         return;
     }
 
-    execute_meas_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR, NULL);
+    if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
+        /* Previous I2C write failed, execute meas complete cb to indicate failure */
+        execute_meas_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR, NULL);
+        return;
+    }
+
+    /* Give required delay between the fetch command (I2C write) and reading measurements (I2C read) */
+    self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, read_periodic_measurement_part_3, (void *)self);
 }
 
 static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
@@ -508,6 +552,9 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
     } else if (mps == SHT3X_MPS_1) {
         cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_1;
@@ -517,6 +564,9 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
     } else if (mps == SHT3X_MPS_2) {
         cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_2;
@@ -526,6 +576,9 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
     } else if (mps == SHT3X_MPS_4) {
         cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_4;
@@ -535,6 +588,9 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
     } else if (mps == SHT3X_MPS_10) {
         cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_10;
@@ -544,7 +600,13 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_MEDIUM;
         } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
             cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
         }
+    } else {
+        /* Invalid mps option */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
     return SHT3X_RESULT_CODE_OK;
@@ -793,8 +855,14 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 
 uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
+    if (!read_flags_valid(flags)) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
+    self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS;
+    self->sequence_flags = flags;
 
     send_fetch_data_cmd(self, read_periodic_measurement_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
