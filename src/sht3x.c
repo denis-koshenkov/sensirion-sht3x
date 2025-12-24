@@ -827,7 +827,7 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
     return SHT3X_RESULT_CODE_OK;
 }
 
-uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching, uint8_t flags,
                                            SHT3XMeasCompleteCb cb, void *user_data)
 {
     if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {

@@ -150,9 +150,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cWriteFailAddressNack)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x23;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* Simulate I2C address NACK */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, i2c_write_complete_cb_user_data);
@@ -179,9 +179,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cWriteFailBusError)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x78;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* Simulate I2C bus error */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_BUS_ERROR, i2c_write_complete_cb_user_data);
@@ -205,8 +205,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cWriteFailMeasCompleteCbNull)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
 
-    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
-                                                    SHT3X_CLOCK_STRETCHING_DISABLED, NULL, NULL);
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                           SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, NULL, NULL);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* Simulate I2C write failure */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_BUS_ERROR, i2c_write_complete_cb_user_data);
@@ -238,9 +239,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cReadFailAddressNack)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x53;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -278,9 +279,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cReadFailBusError)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xAA;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -317,8 +318,9 @@ TEST(SHT3X, ReadSingleShotMeasI2cReadFailMeasCompleteCbNull)
         .withParameter("i2c_addr", i2c_addr)
         .ignoreOtherParameters();
 
-    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
-                                                    SHT3X_CLOCK_STRETCHING_DISABLED, NULL, NULL);
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                           SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, NULL, NULL);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -356,9 +358,9 @@ TEST(SHT3X, ReadSingleShotMeasSuccess)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x29;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -398,9 +400,9 @@ TEST(SHT3X, ReadSingleShotMeasSuccess2)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x38;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -441,8 +443,9 @@ TEST(SHT3X, ReadSingleShotMeasSuccessMeasCompleteCbNull)
         .withParameter("i2c_addr", i2c_addr)
         .ignoreOtherParameters();
 
-    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
-                                                    SHT3X_CLOCK_STRETCHING_DISABLED, NULL, NULL);
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                           SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, NULL, NULL);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -460,8 +463,9 @@ TEST(SHT3X, ReadSingleShotMeasSelfNull)
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
     void *user_data = (void *)0xBB;
-    uint8_t rc = sht3x_read_single_shot_measurement(NULL, SHT3X_MEAS_REPEATABILITY_HIGH,
-                                                    SHT3X_CLOCK_STRETCHING_DISABLED, sht3x_meas_complete_cb, user_data);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        NULL, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, user_data);
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
 }
 
@@ -489,9 +493,9 @@ TEST(SHT3X, ReadSingleShotMeasMediumRepeatability)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xDC;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -533,9 +537,9 @@ TEST(SHT3X, ReadSingleShotMeasLowRepeatability)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xAF;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_CLOCK_STRETCHING_DISABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -575,9 +579,9 @@ TEST(SHT3X, ReadSingleShotMeasHighRepeatabilityClkStretch)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x41;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_ENABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_ENABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -617,9 +621,9 @@ TEST(SHT3X, ReadSingleShotMeasMediumRepeatabilityClkStretch)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x41;
-    uint8_t rc =
-        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_ENABLED,
-                                           sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(
+        sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_ENABLED,
+        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -660,7 +664,8 @@ TEST(SHT3X, ReadSingleShotMeasLowRepeatabilityClkStretch)
 
     void *meas_complete_cb_user_data_expected = (void *)0x49;
     uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, SHT3X_CLOCK_STRETCHING_ENABLED,
-                                                    sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+                                                    SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb,
+                                                    meas_complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
     /* I2C write success */
     i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
@@ -682,8 +687,9 @@ TEST(SHT3X, ReadSingleShotMeasInvalidRepeatability)
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
     uint8_t invalid_repeatability = 0xFF;
-    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, invalid_repeatability, SHT3X_CLOCK_STRETCHING_DISABLED,
-                                                    sht3x_meas_complete_cb, NULL);
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, invalid_repeatability, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                           SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, NULL);
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, meas_complete_cb_call_count);
 }
@@ -694,8 +700,9 @@ TEST(SHT3X, ReadSingleShotMeasInvalidClockStretching)
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
     uint8_t invalid_clock_stretching = 0xFA;
-    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, invalid_clock_stretching,
-                                                    sht3x_meas_complete_cb, NULL);
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_LOW, invalid_clock_stretching,
+                                           SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, NULL);
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, meas_complete_cb_call_count);
 }
