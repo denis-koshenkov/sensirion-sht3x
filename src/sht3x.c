@@ -467,8 +467,8 @@ static void send_soft_reset_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
  * @brief Send single shot measurement command.
  *
  * @param[in] self SHT3X instance.
- * @param[in] repeatability Repeatability option.
- * @param[in] clock_stretching Clock stretching option.
+ * @param[in] repeatability Repeatability option. Use @ref SHT3XMeasRepeatability.
+ * @param[in] clock_stretching Clock stretching option. Use @ref SHT3XClockStretching.
  * @param[in] cb Callback to execute once complete.
  * @param[in] user_data User data to pass to callback.
  *
@@ -487,6 +487,36 @@ static uint8_t send_single_shot_meas_cmd(SHT3X self, uint8_t repeatability, uint
     uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* Invalid repeatability or clock stretching option. */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+/**
+ * @brief Send start periodic measurement command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] repeatability Repeatability option. Use @ref SHT3XMeasRepeatability.
+ * @param[in] mps MPS option. Use @ref SHT3XMps.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully sent command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, or @p mps option is
+ * invalid.
+ */
+static uint8_t send_start_periodic_meas_cmd(SHT3X self, uint8_t repeatability, uint8_t mps,
+                                            SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2];
+    uint8_t rc = get_start_periodic_meas_cmd(repeatability, mps, cmd);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* Invalid repeatability or MPS option. */
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
     self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
@@ -827,17 +857,16 @@ uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2];
-    uint8_t rc = get_start_periodic_meas_cmd(repeatability, mps, cmd);
-    if (rc != SHT3X_RESULT_CODE_OK) {
-        /* We should never end up here, because we verify repeatability and mps options above. */
-        return SHT3X_RESULT_CODE_DRIVER_ERR;
-    }
-
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
 
-    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    uint8_t rc = send_start_periodic_meas_cmd(self, repeatability, mps, generic_i2c_complete_cb, (void *)self);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* This should always succeed, because we pass a valid self pointer, and we validate repeatability and mps
+         * options. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
     return SHT3X_RESULT_CODE_OK;
 }
 
