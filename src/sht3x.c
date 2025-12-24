@@ -306,6 +306,19 @@ static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
 }
 
 /**
+ * @brief Thin wrapper around i2c_read for measurement readout command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] length Number of bytes to read out from the device.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ */
+static void send_read_measurement_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, cb, user_data);
+}
+
+/**
  * @brief Interpret self->sequence_cb as MeasCompleteCb and execute it, if available.
  *
  * @param[in] self SHT3X instance.
@@ -456,18 +469,6 @@ static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
     return num_bytes;
 }
 
-static uint8_t sht3x_read_measurement_impl(SHT3X self, uint8_t flags)
-{
-    size_t length = map_read_meas_flags_to_num_bytes_to_read(flags);
-    if (length == 0) {
-        /* Invalid combination of flags */
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-
-    self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, meas_i2c_complete_cb, (void *)self);
-    return SHT3X_RESULT_CODE_OK;
-}
-
 static void read_single_shot_measurement_part_3(void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -475,11 +476,13 @@ static void read_single_shot_measurement_part_3(void *user_data)
         return;
     }
 
-    uint8_t rc = sht3x_read_measurement_impl(self, SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM);
-    if (rc != SHT3X_RESULT_CODE_OK) {
+    size_t length = map_read_meas_flags_to_num_bytes_to_read(self->sequence_flags);
+    if (length == 0) {
         /* Flags are invalid, this should never happen */
         execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
     }
+
+    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
 }
 
 static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_data)
@@ -514,11 +517,13 @@ static void read_periodic_measurement_part_3(void *user_data)
         return;
     }
 
-    uint8_t rc = sht3x_read_measurement_impl(self, self->sequence_flags);
-    if (rc != SHT3X_RESULT_CODE_OK) {
+    size_t length = map_read_meas_flags_to_num_bytes_to_read(self->sequence_flags);
+    if (length == 0) {
         /* Flags are invalid, this should never happen */
         execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
     }
+
+    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
 }
 
 static void read_periodic_measurement_part_2(uint8_t result_code, void *user_data)
@@ -691,7 +696,7 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
 
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
-    if (!self) {
+    if (!self || !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
@@ -700,7 +705,14 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
     self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;
     self->sequence_flags = flags;
 
-    return sht3x_read_measurement_impl(self, flags);
+    size_t length = map_read_meas_flags_to_num_bytes_to_read(self->sequence_flags);
+    if (length == 0) {
+        /* We should never end up here, because we validate flags above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
+    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
 }
 
 uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
@@ -830,7 +842,8 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching, uint8_t flags,
                                            SHT3XMeasCompleteCb cb, void *user_data)
 {
-    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
+    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching) ||
+        !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
@@ -846,6 +859,7 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
     self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
     self->repeatability = repeatability;
     self->clock_stretching = clock_stretching;
+    self->sequence_flags = flags;
 
     /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
      */

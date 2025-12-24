@@ -631,6 +631,95 @@ TEST(SHT3X, ReadSingleShotMeasInvalidClockStretching)
     CHECK_EQUAL(0, meas_complete_cb_call_count);
 }
 
+static void test_read_single_shot_measurement_invalid_flags(uint8_t flags)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc =
+        sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_ENABLED,
+                                           flags, sht3x_meas_complete_cb, (void *)0x55);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+TEST(SHT3X, ReadSingleShotMeasFlags0)
+{
+    test_read_single_shot_measurement_invalid_flags(0);
+}
+
+TEST(SHT3X, ReadSingleShotMeasCrcHum)
+{
+    test_read_single_shot_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadSingleShotMeasCrcTemp)
+{
+    test_read_single_shot_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP);
+}
+
+TEST(SHT3X, ReadSingleShotMeasCrcTempCrcHum)
+{
+    test_read_single_shot_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadSingleShotMeasHum)
+{
+    /* Single shot meas with low repeatability and clock stretching enabled command */
+    uint8_t i2c_write_data[] = {0x2C, 0x10};
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    float *temperature = NULL;
+    float humidity = 44.80f;
+    ReadSingleShotMeasTestCfg cfg = {
+        .i2c_addr = SHT3X_TEST_DEFAULT_I2C_ADDR,
+        .i2c_write_data = i2c_write_data,
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .timer_period = 1,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 5,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .repeatability = SHT3X_MEAS_REPEATABILITY_LOW,
+        .clk_stretching = SHT3X_CLOCK_STRETCHING_ENABLED,
+        .flags = SHT3X_FLAG_READ_HUM,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_OK,
+        .complete_cb_user_data_expected = (void *)0xC3,
+        .temperature = temperature,
+        .humidity = &humidity,
+        .meas_complete_cb = sht3x_meas_complete_cb,
+    };
+    test_read_single_shot_measurement(&cfg);
+}
+
+TEST(SHT3X, ReadSingleShotMeasHumCrcHum)
+{
+    /* Single shot meas with medium repeatability and clock stretching enabled command */
+    uint8_t i2c_write_data[] = {0x2C, 0x0D};
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
+    float *temperature = NULL;
+    float humidity = 44.80f;
+    ReadSingleShotMeasTestCfg cfg = {
+        .i2c_addr = SHT3X_TEST_DEFAULT_I2C_ADDR,
+        .i2c_write_data = i2c_write_data,
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .timer_period = 1,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 6,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .repeatability = SHT3X_MEAS_REPEATABILITY_MEDIUM,
+        .clk_stretching = SHT3X_CLOCK_STRETCHING_ENABLED,
+        .flags = SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_OK,
+        .complete_cb_user_data_expected = (void *)0xC4,
+        .temperature = temperature,
+        .humidity = &humidity,
+        .meas_complete_cb = sht3x_meas_complete_cb,
+    };
+    test_read_single_shot_measurement(&cfg);
+}
+
 TEST(SHT3X, SingleShotMeasCmdHighRepeatabilityAddressNack)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
