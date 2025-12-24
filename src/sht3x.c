@@ -300,6 +300,117 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
+static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
+{
+    if (!cmd) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    if (mps == SHT3X_MPS_0_5) {
+        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_0_5;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else if (mps == SHT3X_MPS_1) {
+        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_1;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else if (mps == SHT3X_MPS_2) {
+        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_2;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else if (mps == SHT3X_MPS_4) {
+        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_4;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else if (mps == SHT3X_MPS_10) {
+        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_10;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else {
+        /* Invalid mps option */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    return SHT3X_RESULT_CODE_OK;
+}
+
+static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
+{
+    if (!cmd) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
+        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
+        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN;
+        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_HIGH;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM;
+        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
+            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW;
+        } else {
+            /* Invalid repeatability option */
+            return SHT3X_RESULT_CODE_INVALID_ARG;
+        }
+    } else {
+        /* Invalid clock stretching option */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    return SHT3X_RESULT_CODE_OK;
+}
+
 /**
  * @brief Thin wrapper around i2c_write for sending fetch data command.
  *
@@ -350,6 +461,36 @@ static void send_soft_reset_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
 {
     uint8_t cmd[2] = {SHT3X_SOFT_RESET_CMD_MSB, SHT3X_SOFT_RESET_CMD_LSB};
     self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+}
+
+/**
+ * @brief Send single shot measurement command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] repeatability Repeatability option.
+ * @param[in] clock_stretching Clock stretching option.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully sent command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, or @p clock_stretching
+ * option is invalid.
+ */
+static uint8_t send_single_shot_meas_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                         SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2];
+    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* Invalid repeatability or clock stretching option. */
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    return SHT3X_RESULT_CODE_OK;
 }
 
 /**
@@ -617,117 +758,6 @@ static void soft_reset_with_delay_part_2(uint8_t result_code, void *user_data)
     self->start_timer(SHT3X_SOFT_RESET_DELAY_MS, soft_reset_with_delay_part_3, (void *)self);
 }
 
-static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
-{
-    if (!cmd) {
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-
-    if (mps == SHT3X_MPS_0_5) {
-        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_0_5;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_0_5_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else if (mps == SHT3X_MPS_1) {
-        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_1;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_1_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else if (mps == SHT3X_MPS_2) {
-        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_2;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_2_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else if (mps == SHT3X_MPS_4) {
-        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_4;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_4_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else if (mps == SHT3X_MPS_10) {
-        cmd[0] = SHT3X_START_PERIODIC_MEAS_MPS_10;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_START_PERIODIC_MEAS_MPS_10_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else {
-        /* Invalid mps option */
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-
-    return SHT3X_RESULT_CODE_OK;
-}
-
-static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
-{
-    if (!cmd) {
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-
-    if (clock_stretching == SHT3X_CLOCK_STRETCHING_DISABLED) {
-        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_DIS_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else if (clock_stretching == SHT3X_CLOCK_STRETCHING_ENABLED) {
-        cmd[0] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN;
-        if (repeatability == SHT3X_MEAS_REPEATABILITY_HIGH) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_HIGH;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_MEDIUM) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_MEDIUM;
-        } else if (repeatability == SHT3X_MEAS_REPEATABILITY_LOW) {
-            cmd[1] = SHT3X_SINGLE_SHOT_MEAS_CLK_STRETCH_EN_REPEATABILITY_LOW;
-        } else {
-            /* Invalid repeatability option */
-            return SHT3X_RESULT_CODE_INVALID_ARG;
-        }
-    } else {
-        /* Invalid clock stretching option */
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-    return SHT3X_RESULT_CODE_OK;
-}
-
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
 {
     if (!instance || !is_valid_cfg(cfg)) {
@@ -755,16 +785,17 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2];
-    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    uint8_t rc =
+        send_single_shot_meas_cmd(self, repeatability, clock_stretching, generic_i2c_complete_cb, (void *)self);
     if (rc != SHT3X_RESULT_CODE_OK) {
-        /* We should never end up here, because we verify repeatability and clock stretching options above. */
+        /* This should always succeed, because we pass a valid self pointer, and we validate repeatability and clock
+         * stretching options. */
         return SHT3X_RESULT_CODE_DRIVER_ERR;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -932,13 +963,6 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2];
-    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
-    if (rc != SHT3X_RESULT_CODE_OK) {
-        /* We should never end up here, because we verify repeatability and clock stretching options above. */
-        return SHT3X_RESULT_CODE_DRIVER_ERR;
-    }
-
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
     self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
@@ -946,9 +970,13 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
     self->clock_stretching = clock_stretching;
     self->sequence_flags = flags;
 
-    /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
-     */
-    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
+    uint8_t rc = send_single_shot_meas_cmd(self, repeatability, clock_stretching, read_single_shot_measurement_part_2,
+                                           (void *)self);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* Should always succeed, because we validate self pointer, and repeatability and clock stretching options. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
     return SHT3X_RESULT_CODE_OK;
 }
 
