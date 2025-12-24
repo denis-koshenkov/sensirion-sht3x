@@ -292,6 +292,19 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t 
 }
 
 /**
+ * @brief Thin wrapper around i2c_write for sending fetch data command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ */
+static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    uint8_t cmd[2] = {SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB, SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB};
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+}
+
+/**
  * @brief Interpret self->sequence_cb as MeasCompleteCb and execute it, if available.
  *
  * @param[in] self SHT3X instance.
@@ -469,6 +482,16 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
     }
 
     self->start_timer(timer_period, read_single_shot_measurement_part_3, (void *)self);
+}
+
+static void read_periodic_measurement_part_2(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    execute_meas_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR, NULL);
 }
 
 static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
@@ -660,12 +683,10 @@ uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, vo
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2] = {SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB, SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB};
-
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
 
-    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    send_fetch_data_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -772,6 +793,10 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 
 uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    send_fetch_data_cmd(self, read_periodic_measurement_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
