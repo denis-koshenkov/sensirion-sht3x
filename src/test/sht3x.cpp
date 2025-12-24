@@ -2835,3 +2835,73 @@ TEST(SHT3X, SendReadStatusRegCmdSelfNull)
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
     CHECK_EQUAL(0, complete_cb_call_count);
 }
+
+static void test_soft_reset_with_delay(uint8_t i2c_write_rc, uint8_t expected_rc, SHT3XCompleteCb complete_cb,
+                                       void *complete_cb_user_data_expected)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Soft reset command */
+    uint8_t i2c_write_data[] = {0x30, 0xA2};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
+    }
+
+    uint8_t rc = sht3x_soft_reset_with_delay(sht3x, complete_cb, complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        timer_expired_cb(timer_expired_cb_user_data);
+    }
+
+    if (complete_cb) {
+        CHECK_EQUAL(1, complete_cb_call_count);
+        CHECK_EQUAL(expected_rc, complete_cb_result_code);
+        POINTERS_EQUAL(complete_cb_user_data_expected, complete_cb_user_data);
+    }
+}
+
+TEST(SHT3X, SoftResetWithDelay)
+{
+    void *complete_cb_user_data_expected = (void *)0xD6;
+    test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_OK, SHT3X_RESULT_CODE_OK, sht3x_complete_cb,
+                               complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, SoftResetWithDelayAddressNack)
+{
+    void *complete_cb_user_data_expected = (void *)0xD7;
+    test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_RESULT_CODE_IO_ERR, sht3x_complete_cb,
+                               complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, SoftResetWithDelayBusError)
+{
+    void *complete_cb_user_data_expected = (void *)0xD8;
+    test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, sht3x_complete_cb,
+                               complete_cb_user_data_expected);
+}
+
+TEST(SHT3X, SoftResetWithDelaySelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0xD9;
+    uint8_t rc = sht3x_soft_reset_with_delay(NULL, sht3x_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
+
+TEST(SHT3X, SoftResetWithDelayCompleteCbNull)
+{
+    test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, NULL, NULL);
+}

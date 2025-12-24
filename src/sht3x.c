@@ -14,6 +14,10 @@
 /* From the datasheet - there must be at least 1 ms delay between two I2C commands received by the sensor. */
 #define SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS 1
 
+/* From the datasheet - the max amount of time between soft reset command is issued and when sensor is ready to process
+ * I2C commands again. Rounded up. */
+#define SHT3X_SOFT_RESET_DELAY_MS 2
+
 /* From the datasheet, rounded up */
 #define SHT3X_MAX_MEASUREMENT_DURATION_HIGH_REPEATBILITY_MS 16
 #define SHT3X_MAX_MEASUREMENT_DURATION_MEDIUM_REPEATBILITY_MS 7
@@ -336,6 +340,19 @@ static void send_read_status_reg_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb 
 }
 
 /**
+ * @brief Thin wrapper around i2c_write for sending soft reset command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ */
+static void send_soft_reset_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    uint8_t cmd[2] = {SHT3X_SOFT_RESET_CMD_MSB, SHT3X_SOFT_RESET_CMD_LSB};
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+}
+
+/**
  * @brief Interpret self->sequence_cb as MeasCompleteCb and execute it, if available.
  *
  * @param[in] self SHT3X instance.
@@ -350,6 +367,17 @@ static void execute_meas_complete_cb(SHT3X self, uint8_t rc, SHT3XMeasurement *m
     SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
     if (cb) {
         cb(rc, meas, self->sequence_cb_user_data);
+    }
+}
+
+static void execute_complete_cb(SHT3X self, uint8_t rc)
+{
+    if (!self) {
+        return;
+    }
+    SHT3XCompleteCb cb = (SHT3XCompleteCb)self->sequence_cb;
+    if (cb) {
+        cb(rc, self->sequence_cb_user_data);
     }
 }
 
@@ -558,6 +586,32 @@ static void read_periodic_measurement_part_2(uint8_t result_code, void *user_dat
 
     /* Give required delay between the fetch command (I2C write) and reading measurements (I2C read) */
     self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, read_periodic_measurement_part_3, (void *)self);
+}
+
+static void soft_reset_with_delay_part_3(void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+    execute_complete_cb(self, SHT3X_RESULT_CODE_OK);
+}
+
+static void soft_reset_with_delay_part_2(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
+        /* Previous I2C write failed, execute meas complete cb to indicate failure */
+        execute_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR);
+        return;
+    }
+
+    /* Give sensor time to perform soft reset */
+    self->start_timer(SHT3X_SOFT_RESET_DELAY_MS, soft_reset_with_delay_part_3, (void *)self);
 }
 
 static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
@@ -802,12 +856,10 @@ uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data)
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2] = {SHT3X_SOFT_RESET_CMD_MSB, SHT3X_SOFT_RESET_CMD_LSB};
-
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
 
-    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    send_soft_reset_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -909,6 +961,19 @@ uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasComp
     self->sequence_flags = flags;
 
     send_fetch_data_cmd(self, read_periodic_measurement_part_2, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    send_soft_reset_cmd(self, soft_reset_with_delay_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 

@@ -402,6 +402,27 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
 /**
+ * @brief Perform soft reset and wait for 2 ms afterwards.
+ *
+ * After soft reset command is issued, it takes up to 1.5 ms until the device can process incoming I2C commands. This is
+ * stated in device timings in the datasheet. We round up the delay to 2 ms. @p cb is executed after this delay elapses.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully performed soft reset with delay.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the soft reset command. In this case, @p cb is
+ * executed immediately after the I2C transaction, without the 2 ms delay.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. Can be NULL if not needed. result_code parameter of this callback
+ * indicates success or reason for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the soft reset with delay sequence.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
+uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
  * @brief Destroy a SHT3X instance.
  *
  * @param[in] self Instance created by @ref sht3x_create.
