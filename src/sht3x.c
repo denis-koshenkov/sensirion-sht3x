@@ -537,6 +537,19 @@ static void send_start_periodic_meas_art_cmd(SHT3X self, SHT3X_I2CTransactionCom
 }
 
 /**
+ * @brief Thin wrapper around i2c_write for sending stop periodic measurement command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ */
+static void send_stop_periodic_meas_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    uint8_t cmd[2] = {SHT3X_STOP_PERIODIC_MEAS_CMD_MSB, SHT3X_STOP_PERIODIC_MEAS_CMD_LSB};
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+}
+
+/**
  * @brief Interpret self->sequence_cb as MeasCompleteCb and execute it, if available.
  *
  * @param[in] self SHT3X instance.
@@ -915,12 +928,10 @@ uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *us
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    uint8_t cmd[2] = {SHT3X_STOP_PERIODIC_MEAS_CMD_MSB, SHT3X_STOP_PERIODIC_MEAS_CMD_LSB};
-
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
 
-    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    send_stop_periodic_meas_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
