@@ -75,6 +75,10 @@
 #define SHT3X_CLEAR_STATUS_REGISTER_CMD_MSB 0x30
 #define SHT3X_CLEAR_STATUS_REGISTER_CMD_LSB 0x41
 
+/* Clear status register command code */
+#define SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB 0xE0
+#define SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB 0x0
+
 typedef enum {
     SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
@@ -668,6 +672,21 @@ uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, voi
     }
 
     uint8_t cmd[2] = {SHT3X_ART_CMD_MSB, SHT3X_ART_CMD_LSB};
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2] = {SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB, SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB};
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
