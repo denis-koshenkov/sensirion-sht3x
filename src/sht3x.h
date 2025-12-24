@@ -238,9 +238,6 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
  */
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
-uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
-                                           SHT3XMeasCompleteCb cb, void *user_data);
-
 /**
  * @brief Send start periodic measurement command.
  *
@@ -381,6 +378,9 @@ uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
  */
 uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                           SHT3XMeasCompleteCb cb, void *user_data);
 
 /**
  * @brief Destroy a SHT3X instance.
