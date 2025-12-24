@@ -370,6 +370,12 @@ static void execute_meas_complete_cb(SHT3X self, uint8_t rc, SHT3XMeasurement *m
     }
 }
 
+/**
+ * @brief Interpret self->sequence_cb as CompleteCb and execute it, if available.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] rc Return code to pass to CompleteCb, use @ref SHT3XResultCode.
+ */
 static void execute_complete_cb(SHT3X self, uint8_t rc)
 {
     if (!self) {
@@ -388,11 +394,8 @@ static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
         return;
     }
 
-    SHT3XCompleteCb cb = (SHT3XCompleteCb)self->sequence_cb;
-    if (cb) {
-        uint8_t rc = (result_code == SHT3X_I2C_RESULT_CODE_OK) ? SHT3X_RESULT_CODE_OK : SHT3X_RESULT_CODE_IO_ERR;
-        cb(rc, self->sequence_cb_user_data);
-    }
+    uint8_t rc = (result_code == SHT3X_I2C_RESULT_CODE_OK) ? SHT3X_RESULT_CODE_OK : SHT3X_RESULT_CODE_IO_ERR;
+    execute_complete_cb(self, rc);
 }
 
 static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
