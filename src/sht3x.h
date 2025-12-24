@@ -363,6 +363,23 @@ uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
 /**
+ * @brief Send read status register command.
+ *
+ * Potential values of result_code parameter of @p cb:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully sent the command.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR I2C transaction failed, failed to send the command.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] cb Callback to execute once complete. result_code parameter of this callback indicates success or reason
+ * for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ */
+uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
  * @brief Send clear status register command.
  *
  * Potential values of result_code parameter of @p cb:

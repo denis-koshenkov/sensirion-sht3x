@@ -75,9 +75,13 @@
 #define SHT3X_CLEAR_STATUS_REGISTER_CMD_MSB 0x30
 #define SHT3X_CLEAR_STATUS_REGISTER_CMD_LSB 0x41
 
-/* Clear status register command code */
+/* Fetch periodic measurement data command code */
 #define SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB 0xE0
 #define SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB 0x0
+
+/* Read status register command code */
+#define SHT3X_READ_STATUS_REG_CMD_MSB 0xF3
+#define SHT3X_READ_STATUS_REG_CMD_LSB 0x2D
 
 typedef enum {
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
@@ -316,6 +320,19 @@ static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
 static void send_read_measurement_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, cb, user_data);
+}
+
+/**
+ * @brief Thin wrapper around i2c_write for sending read status register command.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once complete.
+ * @param[in] user_data User data to pass to callback.
+ */
+static void send_read_status_reg_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+{
+    uint8_t cmd[2] = {SHT3X_READ_STATUS_REG_CMD_MSB, SHT3X_READ_STATUS_REG_CMD_LSB};
+    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
 }
 
 /**
@@ -821,6 +838,19 @@ uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
     self->sequence_cb_user_data = user_data;
 
     self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+
+    send_read_status_reg_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
