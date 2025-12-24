@@ -1921,9 +1921,26 @@ TEST(SHT3X, FetchPeriodicMeasDataSelfNull)
     CHECK_EQUAL(0, complete_cb_call_count);
 }
 
+/**
+ * @brief Test read periodic measurement function.
+ *
+ * @param flags Flags to pass to sht3x_read_periodic_measurement.
+ * @param i2c_write_rc Return code to return from i2c_write for fetch data command.
+ * @param i2c_read_data Data to write to the "data" parameter of i2c_read for measurement readout command.
+ * @param i2c_data_len Number of bytes in @p i2c_read_data. It is also used to check that "length" parameter to
+ * mock_sht3x_i2c_read is equal to this value.
+ * @param i2c_read_rc Return code to return from i2c_read for measurement readout command.
+ * @param expected_complete_cb_rc Return code that the test expects the meas_complete_cb to be called with.
+ * @param complete_cb_user_data_expected User data expected to be passed to meas_complete_cb.
+ * @param temperature Expected temperature value in the meas->temperature of meas_complete_cb. If NULL, then expected
+ * temperature value is not verified.
+ * @param humidity Expected humidity value in the meas->humidity of meas_complete_cb. If NULL, then expected
+ * humidity value is not verified.
+ */
 static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, uint8_t *i2c_read_data,
                                            size_t i2c_data_len, uint8_t i2c_read_rc, uint8_t expected_complete_cb_rc,
-                                           void *complete_cb_user_data_expected)
+                                           void *complete_cb_user_data_expected, const float *const temperature,
+                                           const float *const humidity)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
@@ -1965,6 +1982,12 @@ static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, 
     CHECK_EQUAL(1, meas_complete_cb_call_count);
     CHECK_EQUAL(expected_complete_cb_rc, meas_complete_cb_result_code);
     POINTERS_EQUAL(complete_cb_user_data_expected, meas_complete_cb_user_data);
+    if (temperature) {
+        DOUBLES_EQUAL(*temperature, meas_complete_cb_meas.temperature, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+    }
+    if (humidity) {
+        DOUBLES_EQUAL(*humidity, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+    }
 }
 
 static void test_read_periodic_measurement_invalid_flags(uint8_t flags)
@@ -1989,8 +2012,10 @@ TEST(SHT3X, ReadPeriodicMeasFetchDataAddressNack)
     /* Care again */
     uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
     void *complete_cb_user_data_expected = (void *)0xAF;
+    float *temperature = NULL;
+    float *humidity = NULL;
     test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
-                                   complete_cb_user_data_expected);
+                                   complete_cb_user_data_expected, temperature, humidity);
 }
 
 TEST(SHT3X, ReadPeriodicMeasFetchDataBusError)
@@ -2004,8 +2029,10 @@ TEST(SHT3X, ReadPeriodicMeasFetchDataBusError)
     /* Care again */
     uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
     void *complete_cb_user_data_expected = (void *)0xB0;
+    float *temperature = NULL;
+    float *humidity = NULL;
     test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
-                                   complete_cb_user_data_expected);
+                                   complete_cb_user_data_expected, temperature, humidity);
 }
 
 TEST(SHT3X, ReadPeriodicMeasReadMeasAddressNack)
@@ -2018,8 +2045,10 @@ TEST(SHT3X, ReadPeriodicMeasReadMeasAddressNack)
     uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
     uint8_t complete_cb_rc = SHT3X_RESULT_CODE_NO_DATA;
     void *complete_cb_user_data_expected = (void *)0xB1;
+    float *temperature = NULL;
+    float *humidity = NULL;
     test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
-                                   complete_cb_user_data_expected);
+                                   complete_cb_user_data_expected, temperature, humidity);
 }
 
 TEST(SHT3X, ReadPeriodicMeasReadMeasBusError)
@@ -2032,11 +2061,308 @@ TEST(SHT3X, ReadPeriodicMeasReadMeasBusError)
     uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_BUS_ERROR;
     uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
     void *complete_cb_user_data_expected = (void *)0xB2;
+    float *temperature = NULL;
+    float *humidity = NULL;
     test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
-                                   complete_cb_user_data_expected);
+                                   complete_cb_user_data_expected, temperature, humidity);
 }
 
 TEST(SHT3X, ReadPeriodicMeasFlags0)
 {
     test_read_periodic_measurement_invalid_flags(0);
+}
+
+TEST(SHT3X, ReadPeriodicMeasCrcHum)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadPeriodicMeasCrcTemp)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP);
+}
+
+TEST(SHT3X, ReadPeriodicMeasCrcTempCrcHum)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadPeriodicMeasHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xB3;
+    float *temperature = NULL;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasHumCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xB4;
+    float *temperature = NULL;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasHumWrongCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%, last byte modified to yield wrong CRC */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0xAF};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xB5;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasHumCrcTemp)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP);
+}
+
+TEST(SHT3X, ReadPeriodicMeasHumCrcTempCrcHum)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP |
+                                                 SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTemp)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius */
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    size_t i2c_data_len = 2;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xB6;
+    float temperature = 22.25f;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempCrcHum)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempCrcTemp)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6};
+    size_t i2c_data_len = 3;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xB7;
+    float temperature = 22.25f;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempWrongCrcTemp)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, last byte modified to yield wrong CRC */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xA9};
+    size_t i2c_data_len = 3;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xB8;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempCrcTempCrcHum)
+{
+    test_read_periodic_measurement_invalid_flags(SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_VERIFY_CRC_TEMP |
+                                                 SHT3X_FLAG_VERIFY_CRC_HUM);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xB9;
+    float temperature = 22.25f;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Third byte modified to yield wrong
+     * temperature CRC, that should not make the test fail since we are not verifying temperature CRC. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB9, 0x72, 0xB3, 0x8F};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xBA;
+    float temperature = 22.25f;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumWrongCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Last byte modified to yield wrong humidity
+     * CRC. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0xFF};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xBB;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumCrcTemp)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3};
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xBC;
+    float temperature = 22.25f;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumWrongCrcTemp)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Third byte modified to yield wrong
+     * temperature CRC. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xA5, 0x72, 0xB3};
+    size_t i2c_data_len = 5;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xBD;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumCrcTempCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH% */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x8F};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_OK;
+    void *complete_cb_user_data_expected = (void *)0xBE;
+    float temperature = 22.25f;
+    float humidity = 44.80f;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, &temperature, &humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumWrongCrcTempCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Third byte modified to yield wrong
+     * temperature CRC. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0x88, 0x72, 0xB3, 0x8F};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xBF;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumCrcTempWrongCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Last byte modified to yield wrong
+     * humidity CRC. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0xB6, 0x72, 0xB3, 0x81};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xC0;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasTempHumWrongCrcTempWrongCrcHum)
+{
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_TEMP | SHT3X_FLAG_VERIFY_CRC_HUM;
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Taken from real device output, temp 22.25 Celsius, humidity 44.80 RH%. Third and last bytes are modified to yield
+     * wrong both temperature and humidity CRCs. */
+    uint8_t i2c_read_data[] = {0x62, 0x60, 0x23, 0x72, 0xB3, 0x45};
+    size_t i2c_data_len = 6;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH;
+    void *complete_cb_user_data_expected = (void *)0xC1;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_periodic_measurement(flags, i2c_write_rc, i2c_read_data, i2c_data_len, i2c_read_rc, complete_cb_rc,
+                                   complete_cb_user_data_expected, temperature, humidity);
+}
+
+TEST(SHT3X, ReadPeriodicMeasSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0xC2;
+    uint8_t rc = sht3x_read_periodic_measurement(NULL, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
 }

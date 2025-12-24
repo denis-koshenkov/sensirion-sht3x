@@ -855,7 +855,7 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
 
 uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
 {
-    if (!read_flags_valid(flags)) {
+    if (!self || !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
