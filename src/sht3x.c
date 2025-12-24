@@ -618,32 +618,6 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
     return sht3x_read_measurement_impl(self, flags);
 }
 
-uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
-                                           SHT3XMeasCompleteCb cb, void *user_data)
-{
-    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
-        return SHT3X_RESULT_CODE_INVALID_ARG;
-    }
-
-    uint8_t cmd[2];
-    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
-    if (rc != SHT3X_RESULT_CODE_OK) {
-        /* We should never end up here, because we verify repeatability and clock stretching options above. */
-        return SHT3X_RESULT_CODE_DRIVER_ERR;
-    }
-
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-    self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
-    self->repeatability = repeatability;
-    self->clock_stretching = clock_stretching;
-
-    /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
-     */
-    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
-    return SHT3X_RESULT_CODE_OK;
-}
-
 uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
                                          void *user_data)
 {
@@ -767,6 +741,37 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
     self->sequence_cb_user_data = user_data;
 
     self->i2c_write(cmd, 2, self->i2c_addr, generic_i2c_complete_cb, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
+                                           SHT3XMeasCompleteCb cb, void *user_data)
+{
+    if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+
+    uint8_t cmd[2];
+    uint8_t rc = get_single_shot_meas_command_code(repeatability, clock_stretching, cmd);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and clock stretching options above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
+
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = user_data;
+    self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
+    self->repeatability = repeatability;
+    self->clock_stretching = clock_stretching;
+
+    /* Passing self as user data, so that we can invoke SHT3XMeasCompleteCb in read_single_shot_measurement_part_x
+     */
+    self->i2c_write(cmd, sizeof(cmd), self->i2c_addr, read_single_shot_measurement_part_2, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data)
+{
     return SHT3X_RESULT_CODE_OK;
 }
 
