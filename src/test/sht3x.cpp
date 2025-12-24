@@ -95,6 +95,7 @@ TEST_GROUP(SHT3X)
         
         sht3x = NULL;
         memset(&init_cfg, 0, sizeof(SHT3XInitConfig));
+        memset(&instance_memory, 0, sizeof(struct SHT3XStruct));
 
         /* Test should call sht3x_create at the beginning, which will call this mock */
         mock()
