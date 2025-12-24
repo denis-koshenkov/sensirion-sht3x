@@ -634,6 +634,63 @@ static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
     execute_complete_cb(self, rc);
 }
 
+/**
+ * @brief Check whether @p flags is a valid combination of read flags.
+ *
+ * @param flags Flags combination.
+ *
+ * @retval true Flags combination is valid.
+ * @retval false Flags combination is invalid.
+ */
+static bool read_flags_valid(uint8_t flags)
+{
+    // clang-format off
+    bool flags_invalid = (
+        (!(flags & SHT3X_FLAG_READ_TEMP) && !(flags & SHT3X_FLAG_READ_HUM))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM))
+    );
+    // clang-format on
+    return !flags_invalid;
+}
+
+/**
+ * @brief Map read measurement flags to number of bytes to read from the device.
+ *
+ * @param flags Flags.
+ *
+ * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
+ */
+static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
+{
+    size_t num_bytes = 0;
+    if (flags == 0) {
+        /* We should be reading at least either temperature or humidity */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
+        /* Cannot verify temperature CRC if we are not reading temperature */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
+        /* Cannot verify humidity CRC if we are not reading humidity */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
+        num_bytes = 6;
+    } else if (flags & SHT3X_FLAG_READ_HUM) {
+        /* Last byte is humidity CRC, omit it since we are not verifying humidity CRC */
+        num_bytes = 5;
+    } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
+        /* Last three bytes are humidity meas and its crc, no need to read them out */
+        num_bytes = 3;
+    } else if (flags & SHT3X_FLAG_READ_TEMP) {
+        /* Third byte is temperature CRC, omit it since we are not verifying temperature CRC */
+        num_bytes = 2;
+    } else {
+        // Invalid flag combination
+        num_bytes = 0;
+    }
+    return num_bytes;
+}
+
 static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -696,64 +753,7 @@ static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
     execute_meas_complete_cb(self, SHT3X_RESULT_CODE_OK, &meas);
 }
 
-/**
- * @brief Check whether @p flags is a valid combination of read flags.
- *
- * @param flags Flags combination.
- *
- * @retval true Flags combination is valid.
- * @retval false Flags combination is invalid.
- */
-static bool read_flags_valid(uint8_t flags)
-{
-    // clang-format off
-    bool flags_invalid = (
-        (!(flags & SHT3X_FLAG_READ_TEMP) && !(flags & SHT3X_FLAG_READ_HUM))
-        || ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP))
-        || ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM))
-    );
-    // clang-format on
-    return !flags_invalid;
-}
-
-/**
- * @brief Map read measurement flags to number of bytes to read from the device.
- *
- * @param flags Flags.
- *
- * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
- */
-static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
-{
-    size_t num_bytes = 0;
-    if (flags == 0) {
-        /* We should be reading at least either temperature or humidity */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
-        /* Cannot verify temperature CRC if we are not reading temperature */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
-        /* Cannot verify humidity CRC if we are not reading humidity */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
-        num_bytes = 6;
-    } else if (flags & SHT3X_FLAG_READ_HUM) {
-        /* Last byte is humidity CRC, omit it since we are not verifying humidity CRC */
-        num_bytes = 5;
-    } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
-        /* Last three bytes are humidity meas and its crc, no need to read them out */
-        num_bytes = 3;
-    } else if (flags & SHT3X_FLAG_READ_TEMP) {
-        /* Third byte is temperature CRC, omit it since we are not verifying temperature CRC */
-        num_bytes = 2;
-    } else {
-        // Invalid flag combination
-        num_bytes = 0;
-    }
-    return num_bytes;
-}
-
-static void read_single_shot_measurement_part_3(void *user_data)
+static void read_meas_seq_part_3(void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
     if (!self) {
@@ -769,7 +769,7 @@ static void read_single_shot_measurement_part_3(void *user_data)
     send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
 }
 
-static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_data)
+static void read_meas_seq_part_2(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
     if (!self) {
@@ -782,49 +782,7 @@ static void read_single_shot_measurement_part_2(uint8_t result_code, void *user_
         return;
     }
 
-    uint32_t timer_period = 0;
-    uint8_t rc = get_single_shot_meas_timer_period(self->repeatability, self->clock_stretching, &timer_period);
-    if (rc != SHT3X_RESULT_CODE_OK) {
-        /* We should never end up here, because we verify repeatability and clock stretching options before starting the
-         * sequence. */
-        execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
-        return;
-    }
-
-    self->start_timer(timer_period, read_single_shot_measurement_part_3, (void *)self);
-}
-
-static void read_periodic_measurement_part_3(void *user_data)
-{
-    SHT3X self = (SHT3X)user_data;
-    if (!self) {
-        return;
-    }
-
-    size_t length = map_read_meas_flags_to_num_bytes_to_read(self->sequence_flags);
-    if (length == 0) {
-        /* Flags are invalid, this should never happen */
-        execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
-    }
-
-    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
-}
-
-static void read_periodic_measurement_part_2(uint8_t result_code, void *user_data)
-{
-    SHT3X self = (SHT3X)user_data;
-    if (!self) {
-        return;
-    }
-
-    if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
-        /* Previous I2C write failed, execute meas complete cb to indicate failure */
-        execute_meas_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR, NULL);
-        return;
-    }
-
-    /* Give required delay between the fetch command (I2C write) and reading measurements (I2C read) */
-    self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, read_periodic_measurement_part_3, (void *)self);
+    self->start_timer(self->sequence_timer_period, read_meas_seq_part_3, (void *)self);
 }
 
 static void soft_reset_with_delay_part_3(void *user_data)
@@ -1039,6 +997,28 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
     return SHT3X_RESULT_CODE_OK;
 }
 
+/**
+ * @brief Start a measurement sequence.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once the sequence is complete.
+ * @param[in] cb_user_data User data to pass to @p cb.
+ * @param[in] sequence_type Sequence type.
+ * @param[in] flags Read flags. Determine how many bytes are read during the measurement readout, as well as what
+ * measurements (temperature/humidity) are read out, and whether temperature/humidity CRC is validated.
+ * @param[in] timer_period Time to wait between sending the initial I2C write command and sending the measurement
+ * readout I2C command.
+ */
+static void start_meas_seq(SHT3X self, SHT3XMeasCompleteCb cb, void *cb_user_data, uint8_t sequence_type, uint8_t flags,
+                           uint32_t timer_period)
+{
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = cb_user_data;
+    self->sequence_type = sequence_type;
+    self->sequence_flags = flags;
+    self->sequence_timer_period = timer_period;
+}
+
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching, uint8_t flags,
                                            SHT3XMeasCompleteCb cb, void *user_data)
 {
@@ -1046,16 +1026,18 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
         !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    uint8_t rc;
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-    self->sequence_type = SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS;
-    self->repeatability = repeatability;
-    self->clock_stretching = clock_stretching;
-    self->sequence_flags = flags;
+    uint32_t timer_period;
+    rc = get_single_shot_meas_timer_period(repeatability, clock_stretching, &timer_period);
+    if (rc != SHT3X_RESULT_CODE_OK) {
+        /* We should never end up here, because we verify repeatability and clock stretching options above. */
+        return SHT3X_RESULT_CODE_DRIVER_ERR;
+    }
 
-    uint8_t rc = send_single_shot_meas_cmd(self, repeatability, clock_stretching, read_single_shot_measurement_part_2,
-                                           (void *)self);
+    start_meas_seq(self, cb, user_data, SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS, flags, timer_period);
+
+    rc = send_single_shot_meas_cmd(self, repeatability, clock_stretching, read_meas_seq_part_2, (void *)self);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* Should always succeed, because we validate self pointer, and repeatability and clock stretching options. */
         return SHT3X_RESULT_CODE_DRIVER_ERR;
@@ -1070,12 +1052,12 @@ uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasComp
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-    self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS;
-    self->sequence_flags = flags;
+    /* No need to wait between sending fetch data cmd and meas readout command other than the mandatory delay between
+     * two I2C commands. */
+    start_meas_seq(self, cb, user_data, SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS, flags,
+                   SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS);
 
-    send_fetch_data_cmd(self, read_periodic_measurement_part_2, (void *)self);
+    send_fetch_data_cmd(self, read_meas_seq_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 

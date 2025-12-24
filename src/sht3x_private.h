@@ -34,12 +34,14 @@ struct SHT3XStruct {
     uint8_t i2c_addr;
     /** Sequence type of the current sequence. One of @ref SHT3xSequenceType. */
     uint8_t sequence_type;
-    /** Repeatability option of the current sequence. One of @ref SHT3XMeasRepeatability. */
-    uint8_t repeatability;
-    /** Clock stretching option of the current sequence. One of @ref SHT3XClockStretching. */
-    uint8_t clock_stretching;
     /** Flags for the current sequence. */
     uint8_t sequence_flags;
+    /**
+     * @brief Timer period for measurement sequence.
+     *
+     * The second step of a measurement sequence is a timer delay. This variable defines the period of that delay.
+     */
+    uint32_t sequence_timer_period;
 };
 
 #ifdef __cplusplus
