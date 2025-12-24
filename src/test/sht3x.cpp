@@ -135,31 +135,127 @@ TEST(SHT3X, DestroyCalledWithFreeInstanceMemoryNullDoesNotCrash)
     sht3x_destroy(sht3x, NULL, NULL);
 }
 
-TEST(SHT3X, ReadSingleShotMeasI2cWriteFailAddressNack)
+typedef struct {
+    uint8_t i2c_addr;
+    uint8_t *i2c_write_data;
+    uint8_t i2c_write_rc;
+    uint32_t timer_period;
+    uint8_t *i2c_read_data;
+    size_t i2c_data_len;
+    uint8_t i2c_read_rc;
+    uint8_t repeatability;
+    uint8_t clk_stretching;
+    uint8_t flags;
+    uint8_t expected_complete_cb_rc;
+    void *complete_cb_user_data_expected;
+    float *temperature;
+    float *humidity;
+} ReadSingleShotMeasTestCfg;
+
+static void test_read_single_shot_measurement(uint8_t i2c_addr, uint8_t *i2c_write_data, uint8_t i2c_write_rc,
+                                              uint32_t timer_period, uint8_t *i2c_read_data, size_t i2c_data_len,
+                                              uint8_t i2c_read_rc, uint8_t repeatability, uint8_t clk_stretching,
+                                              uint8_t flags, uint8_t expected_complete_cb_rc,
+                                              void *complete_cb_user_data_expected, const float *const temperature,
+                                              const float *const humidity)
 {
+    init_cfg.i2c_addr = i2c_addr;
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
-    /* Single shot meas with high repeatability and clock stretching disabled command */
-    uint8_t i2c_write_data[] = {0x24, 0x0};
     mock()
         .expectOneCall("mock_sht3x_i2c_write")
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
-        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("i2c_addr", i2c_addr)
         .ignoreOtherParameters();
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", timer_period)
+            .ignoreOtherParameters();
+        if (i2c_read_data != NULL) {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
+                .withParameter("length", i2c_data_len)
+                .withParameter("i2c_addr", i2c_addr)
+                .ignoreOtherParameters();
+        } else {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withParameter("length", i2c_data_len)
+                .withParameter("i2c_addr", i2c_addr)
+                .ignoreOtherParameters();
+        }
+    }
 
-    void *meas_complete_cb_user_data_expected = (void *)0x23;
-    uint8_t rc = sht3x_read_single_shot_measurement(
-        sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
-        SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    uint8_t rc = sht3x_read_single_shot_measurement(sht3x, repeatability, clk_stretching, flags, sht3x_meas_complete_cb,
+                                                    complete_cb_user_data_expected);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
-    /* Simulate I2C address NACK */
-    i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, i2c_write_complete_cb_user_data);
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        timer_expired_cb(timer_expired_cb_user_data);
+        i2c_read_complete_cb(i2c_read_rc, i2c_read_complete_cb_user_data);
+    }
 
     CHECK_EQUAL(1, meas_complete_cb_call_count);
-    CHECK_EQUAL(SHT3X_RESULT_CODE_IO_ERR, meas_complete_cb_result_code);
-    POINTERS_EQUAL(meas_complete_cb_user_data_expected, meas_complete_cb_user_data);
+    CHECK_EQUAL(expected_complete_cb_rc, meas_complete_cb_result_code);
+    POINTERS_EQUAL(complete_cb_user_data_expected, meas_complete_cb_user_data);
+    if (temperature) {
+        DOUBLES_EQUAL(*temperature, meas_complete_cb_meas.temperature, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+    }
+    if (humidity) {
+        DOUBLES_EQUAL(*humidity, meas_complete_cb_meas.humidity, SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD);
+    }
+}
+
+TEST(SHT3X, ReadSingleShotMeasI2cWriteFailAddressNack)
+{
+    uint8_t i2c_addr = SHT3X_TEST_DEFAULT_I2C_ADDR;
+    /* Single shot meas with high repeatability and clock stretching disabled command */
+    uint8_t i2c_write_data[] = {0x24, 0x0};
+    uint8_t i2c_write_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK;
+    /* Don't care */
+    uint32_t timer_period = 0;
+    uint8_t *i2c_read_data = NULL;
+    size_t i2c_data_len = 0;
+    uint8_t i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK;
+    /* Care */
+    uint8_t repeatability = SHT3X_MEAS_REPEATABILITY_HIGH;
+    uint8_t clock_stretching = SHT3X_CLOCK_STRETCHING_DISABLED;
+    uint8_t flags = SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM;
+    uint8_t complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR;
+    void *complete_cb_user_data_expected = (void *)0x23;
+    float *temperature = NULL;
+    float *humidity = NULL;
+    test_read_single_shot_measurement(i2c_addr, i2c_write_data, i2c_write_rc, timer_period, i2c_read_data, i2c_data_len,
+                                      i2c_read_rc, repeatability, clock_stretching, flags, complete_cb_rc,
+                                      complete_cb_user_data_expected, temperature, humidity);
+
+    // uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    // CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    // /* Single shot meas with high repeatability and clock stretching disabled command */
+    // uint8_t i2c_write_data[] = {0x24, 0x0};
+    // mock()
+    //     .expectOneCall("mock_sht3x_i2c_write")
+    //     .withMemoryBufferParameter("data", i2c_write_data, 2)
+    //     .withParameter("length", 2)
+    //     .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+    //     .ignoreOtherParameters();
+
+    // void *meas_complete_cb_user_data_expected = (void *)0x23;
+    // uint8_t rc = sht3x_read_single_shot_measurement(
+    //     sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+    //     SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
+    // CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    // /* Simulate I2C address NACK */
+    // i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, i2c_write_complete_cb_user_data);
+
+    // CHECK_EQUAL(1, meas_complete_cb_call_count);
+    // CHECK_EQUAL(SHT3X_RESULT_CODE_IO_ERR, meas_complete_cb_result_code);
+    // POINTERS_EQUAL(meas_complete_cb_user_data_expected, meas_complete_cb_user_data);
 }
 
 TEST(SHT3X, ReadSingleShotMeasI2cWriteFailBusError)
