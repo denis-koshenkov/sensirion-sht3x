@@ -105,6 +105,8 @@ typedef enum {
     SHT3X_RESULT_CODE_IO_ERR,
     SHT3X_RESULT_CODE_NO_DATA,
     SHT3X_RESULT_CODE_CRC_MISMATCH,
+    /** Previous operation is still ongoing, cannot start a new one. */
+    SHT3X_RESULT_CODE_BUSY,
 } SHT3XResultCode;
 
 typedef enum {

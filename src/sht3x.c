@@ -88,6 +88,7 @@
 #define SHT3X_READ_STATUS_REG_CMD_LSB 0x2D
 
 typedef enum {
+    SHT3X_SEQUENCE_TYPE_GENERIC,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
     SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS,
@@ -486,6 +487,60 @@ static void reset_sequence_data(SHT3X self)
 }
 
 /**
+ * @brief Check whether there is currently an ongoing sequence.
+ *
+ * A sequence is ongoing when a public function of this driver has been called, but not all steps have been completed
+ * yet. For example, "start periodic measurement" command has been sent, but I2C callback has not arrived yet. This
+ * means that the I2C write is still in progress, and the driver should not attempt to start another sequence.
+ *
+ * @param[in] self SHT3X instance.
+ *
+ * @retval true Sequence ongoing.
+ * @retval false There is no ongoing sequence.
+ */
+static bool is_sequence_ongoing(SHT3X self)
+{
+    return (self->sequence_type != SHT3X_SEQUENCE_TYPE_NO_SEQ);
+}
+
+/**
+ * @brief Start a generic sequence.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] sequence_type Sequence type.
+ * @param[in] cb Callback to execute once the sequence is complete.
+ * @param[in] cb_user_data User data to pass to @p cb.
+ */
+static void start_sequence(SHT3X self, uint8_t seq_type, SHT3XMeasCompleteCb cb, void *cb_user_data)
+{
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = cb_user_data;
+    self->sequence_type = seq_type;
+}
+
+/**
+ * @brief Start a measurement sequence.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] cb Callback to execute once the sequence is complete.
+ * @param[in] cb_user_data User data to pass to @p cb.
+ * @param[in] sequence_type Sequence type.
+ * @param[in] flags Read flags. Determine how many bytes are read during the measurement readout, as well as what
+ * measurements (temperature/humidity) are read out, and whether temperature/humidity CRC is validated.
+ * @param[in] timer_period Time to wait between sending the initial I2C write command and sending the measurement
+ * readout I2C command.
+ */
+static void start_meas_seq(SHT3X self, SHT3XMeasCompleteCb cb, void *cb_user_data, uint8_t sequence_type, uint8_t flags,
+                           uint32_t timer_period)
+{
+    self->sequence_cb = (void *)cb;
+    self->sequence_cb_user_data = cb_user_data;
+    self->sequence_type = sequence_type;
+    self->sequence_flags = flags;
+    self->sequence_timer_period = timer_period;
+}
+
+/**
  * @brief Thin wrapper around i2c_write for sending fetch data command.
  *
  * @param[in] self SHT3X instance.
@@ -855,6 +910,9 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
     if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
@@ -969,9 +1027,7 @@ uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_enable_heater_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1013,28 +1069,6 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
 
     send_clear_status_reg_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
-}
-
-/**
- * @brief Start a measurement sequence.
- *
- * @param[in] self SHT3X instance.
- * @param[in] cb Callback to execute once the sequence is complete.
- * @param[in] cb_user_data User data to pass to @p cb.
- * @param[in] sequence_type Sequence type.
- * @param[in] flags Read flags. Determine how many bytes are read during the measurement readout, as well as what
- * measurements (temperature/humidity) are read out, and whether temperature/humidity CRC is validated.
- * @param[in] timer_period Time to wait between sending the initial I2C write command and sending the measurement
- * readout I2C command.
- */
-static void start_meas_seq(SHT3X self, SHT3XMeasCompleteCb cb, void *cb_user_data, uint8_t sequence_type, uint8_t flags,
-                           uint32_t timer_period)
-{
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = cb_user_data;
-    self->sequence_type = sequence_type;
-    self->sequence_flags = flags;
-    self->sequence_timer_period = timer_period;
 }
 
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching, uint8_t flags,

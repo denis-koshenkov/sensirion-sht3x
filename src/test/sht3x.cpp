@@ -2905,3 +2905,29 @@ TEST(SHT3X, SoftResetWithDelayCompleteCbNull)
 {
     test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, NULL, NULL);
 }
+
+TEST(SHT3X, SendSingleShotMeasCmdBusy)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Enable heater command */
+    uint8_t i2c_write_data[] = {0x30, 0x6D};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc_enable_heater = sht3x_enable_heater(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_enable_heater);
+    /* I2C write callback is not executed yet, so enable heater sequence is still in progres. The driver should reject
+     * attempts to start new sequences. */
+
+    uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
+                                                        SHT3X_CLOCK_STRETCHING_DISABLED, sht3x_complete_cb, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, rc);
+    CHECK_EQUAL(0, complete_cb_call_count);
+}
