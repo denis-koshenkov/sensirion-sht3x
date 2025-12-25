@@ -2906,7 +2906,18 @@ TEST(SHT3X, SoftResetWithDelayCompleteCbNull)
     test_soft_reset_with_delay(SHT3X_I2C_RESULT_CODE_BUS_ERROR, SHT3X_RESULT_CODE_IO_ERR, NULL, NULL);
 }
 
-TEST(SHT3X, SendSingleShotMeasCmdBusy)
+typedef uint8_t (*SHT3XFunction)();
+
+/**
+ * @brief Test that when a public SHT3X function is called when another sequence is in progress, BUSY result code is
+ * returned.
+ *
+ * Starts a "enable heater" sequence and does not execute the I2C write callback. Then, invokes @p function and expects
+ * that it will return BUSY result code, because the "enable heater" sequence is still in progress.
+ *
+ * @param function Function that should return BUSY result code.
+ */
+static void test_busy_if_seq_in_progress(SHT3XFunction function)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
@@ -2925,9 +2936,152 @@ TEST(SHT3X, SendSingleShotMeasCmdBusy)
     /* I2C write callback is not executed yet, so enable heater sequence is still in progres. The driver should reject
      * attempts to start new sequences. */
 
-    uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
-                                                        SHT3X_CLOCK_STRETCHING_DISABLED, sht3x_complete_cb, NULL);
-
+    uint8_t rc = function();
     CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, rc);
+    /* User cb should not be called when busy is returned */
     CHECK_EQUAL(0, complete_cb_call_count);
+    CHECK_EQUAL(0, meas_complete_cb_call_count);
+}
+
+static uint8_t send_single_shot_meas_cmd()
+{
+    return sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_CLOCK_STRETCHING_DISABLED,
+                                                  sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, SendSingleShotMeasCmdBusy)
+{
+    test_busy_if_seq_in_progress(send_single_shot_meas_cmd);
+}
+
+static uint8_t read_measurement()
+{
+    return sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, NULL);
+}
+
+TEST(SHT3X, ReadMeasurementBusy)
+{
+    test_busy_if_seq_in_progress(read_measurement);
+}
+
+static uint8_t start_periodic_measurement()
+{
+    return sht3x_start_periodic_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH, SHT3X_MPS_2, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, StartPeriodicMeasurementBusy)
+{
+    test_busy_if_seq_in_progress(start_periodic_measurement);
+}
+
+static uint8_t start_periodic_measurement_art()
+{
+    return sht3x_start_periodic_measurement_art(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, StartPeriodicMeasurementArtBusy)
+{
+    test_busy_if_seq_in_progress(start_periodic_measurement_art);
+}
+
+static uint8_t fetch_periodic_measurement_data()
+{
+    return sht3x_fetch_periodic_measurement_data(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, FetchPeriodicMeasurementDataBusy)
+{
+    test_busy_if_seq_in_progress(fetch_periodic_measurement_data);
+}
+
+static uint8_t stop_periodic_measurement()
+{
+    return sht3x_stop_periodic_measurement(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, StopPeriodicMeasurementBusy)
+{
+    test_busy_if_seq_in_progress(stop_periodic_measurement);
+}
+
+static uint8_t soft_reset()
+{
+    return sht3x_soft_reset(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, SoftResetBusy)
+{
+    test_busy_if_seq_in_progress(soft_reset);
+}
+
+static uint8_t enable_heater()
+{
+    return sht3x_enable_heater(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, EnableHeaterBusy)
+{
+    test_busy_if_seq_in_progress(enable_heater);
+}
+
+static uint8_t disable_heater()
+{
+    return sht3x_disable_heater(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, DisableHeaterBusy)
+{
+    test_busy_if_seq_in_progress(disable_heater);
+}
+
+static uint8_t send_read_status_register_cmd()
+{
+    return sht3x_send_read_status_register_cmd(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, SendReadStatusRegisterCmdBusy)
+{
+    test_busy_if_seq_in_progress(send_read_status_register_cmd);
+}
+
+static uint8_t clear_status_register()
+{
+    return sht3x_clear_status_register(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, ClearStatusRegisterBusy)
+{
+    test_busy_if_seq_in_progress(clear_status_register);
+}
+
+static uint8_t read_single_shot_measurement()
+{
+    return sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_ENABLED,
+                                              SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, NULL);
+}
+
+TEST(SHT3X, ReadSingleShotMeasurementBusy)
+{
+    test_busy_if_seq_in_progress(read_single_shot_measurement);
+}
+
+static uint8_t read_periodic_measurement()
+{
+    return sht3x_read_periodic_measurement(sht3x, SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM,
+                                           sht3x_meas_complete_cb, NULL);
+}
+
+TEST(SHT3X, ReadPeriodicMeasurementBusy)
+{
+    test_busy_if_seq_in_progress(read_periodic_measurement);
+}
+
+static uint8_t soft_reset_with_delay()
+{
+    return sht3x_soft_reset_with_delay(sht3x, sht3x_complete_cb, NULL);
+}
+
+TEST(SHT3X, SoftResetWithDelayBusy)
+{
+    test_busy_if_seq_in_progress(soft_reset_with_delay);
 }

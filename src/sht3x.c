@@ -933,6 +933,9 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
     if (!self || !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = cb;
     self->sequence_cb_user_data = user_data;
@@ -955,6 +958,9 @@ uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint
     if (!self || !is_valid_repeatability(repeatability) || !is_valid_mps(mps)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
@@ -974,6 +980,9 @@ uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, voi
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
@@ -986,6 +995,9 @@ uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, vo
 {
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
 
     self->sequence_cb = (void *)cb;
@@ -1000,6 +1012,9 @@ uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *us
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
@@ -1012,6 +1027,9 @@ uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data)
 {
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
 
     self->sequence_cb = (void *)cb;
@@ -1026,6 +1044,9 @@ uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_enable_heater_cmd(self, generic_i2c_complete_cb, (void *)self);
@@ -1036,6 +1057,9 @@ uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
 {
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
 
     self->sequence_cb = (void *)cb;
@@ -1050,6 +1074,9 @@ uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     self->sequence_cb = (void *)cb;
     self->sequence_cb_user_data = user_data;
@@ -1062,6 +1089,9 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
 {
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
 
     self->sequence_cb = (void *)cb;
@@ -1077,6 +1107,9 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
     if (!self || !is_valid_repeatability(repeatability) || !is_valid_clock_stretching(clock_stretching) ||
         !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
     uint8_t rc;
 
@@ -1103,6 +1136,9 @@ uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasComp
     if (!self || !read_flags_valid(flags)) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
 
     /* No need to wait between sending fetch data cmd and meas readout command other than the mandatory delay between
      * two I2C commands. */
@@ -1117,6 +1153,9 @@ uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_d
 {
     if (!self) {
         return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
     }
 
     self->sequence_cb = (void *)cb;
