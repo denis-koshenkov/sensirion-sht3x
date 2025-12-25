@@ -511,9 +511,9 @@ static bool is_sequence_ongoing(SHT3X self)
  * @param[in] cb Callback to execute once the sequence is complete.
  * @param[in] cb_user_data User data to pass to @p cb.
  */
-static void start_sequence(SHT3X self, uint8_t seq_type, SHT3XMeasCompleteCb cb, void *cb_user_data)
+static void start_sequence(SHT3X self, uint8_t seq_type, void *cb, void *cb_user_data)
 {
-    self->sequence_cb = (void *)cb;
+    self->sequence_cb = cb;
     self->sequence_cb_user_data = cb_user_data;
     self->sequence_type = seq_type;
 }
@@ -730,8 +730,11 @@ static void execute_meas_complete_cb(SHT3X self, uint8_t rc, SHT3XMeasurement *m
         return;
     }
     SHT3XMeasCompleteCb cb = (SHT3XMeasCompleteCb)self->sequence_cb;
+    void *user_data = self->sequence_cb_user_data;
+    /* Public functions can now be called again - sequence complete */
+    reset_sequence_data(self);
     if (cb) {
-        cb(rc, meas, self->sequence_cb_user_data);
+        cb(rc, meas, user_data);
     }
 }
 
@@ -748,7 +751,7 @@ static void execute_complete_cb(SHT3X self, uint8_t rc)
     }
     SHT3XCompleteCb cb = (SHT3XCompleteCb)self->sequence_cb;
     void *user_data = self->sequence_cb_user_data;
-    /* Public functions can now be called, they will not return BUSY anymore because sequence is complete. */
+    /* Public functions can now be called again - sequence complete */
     reset_sequence_data(self);
     if (cb) {
         cb(rc, user_data);
@@ -940,16 +943,14 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = cb;
-    self->sequence_cb_user_data = user_data;
-    self->sequence_type = SHT3X_SEQUENCE_TYPE_READ_MEAS;
-    self->sequence_flags = flags;
-
-    size_t length = map_read_meas_flags_to_num_bytes_to_read(self->sequence_flags);
+    size_t length = map_read_meas_flags_to_num_bytes_to_read(flags);
     if (length == 0) {
         /* We should never end up here, because we validate flags above. */
         return SHT3X_RESULT_CODE_DRIVER_ERR;
     }
+
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_READ_MEAS, cb, user_data);
+    self->sequence_flags = flags;
 
     send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
