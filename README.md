@@ -1,6 +1,10 @@
 # Sensirion SHT3X Driver
 Driver for Sensirion SHT3X temperature & humidity sensor that supports non-blocking mode of operation.
 
+The driver is implemented in C language.
+
+The driver was developed using Test-Driven Development (TDD). Unit testing is performed using the [CppUTest](https://cpputest.github.io/) testing framework.
+
 # Integration Details
 Add the following to your build:
 - `src/sht3x.c` source file
@@ -165,9 +169,10 @@ The same applies to executing completion callbacks passed to `sht3x_i2c_read` an
 # Running Tests
 Prerequisites:
 - CMake
-- C compiler (e.g. GCC)
-- C++ compiler (e.g. G++)
+- C compiler (e.g. gcc)
+- C++ compiler (e.g. g++)
 
+Steps:
 1. Clone this repository
 2. Fetch the CppUTest submodule:
 ```
