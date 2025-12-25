@@ -3360,3 +3360,58 @@ TEST(SHT3X, ReadPeriodicMeasSuccessCannotBeInterrupted)
     test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
                                              SHT3X_I2C_RESULT_CODE_OK);
 }
+
+static void test_soft_reset_with_delay_cannot_be_interrupted(uint8_t i2c_write_rc)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t i2c_write_data[] = {0x30, 0xA2};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
+    }
+    /* Clear status register command */
+    uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc = sht3x_soft_reset_with_delay(sht3x, sht3x_complete_cb, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+
+    uint8_t other_cmd_rc;
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        /* Timer period is ongoing */
+        other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+        CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+        timer_expired_cb(timer_expired_cb_user_data);
+    }
+
+    /* Sequence finished, other operations are now allowed */
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, other_cmd_rc);
+}
+
+TEST(SHT3X, SoftResetWithDelayWriteFailCannotBeInterrupted)
+{
+    test_soft_reset_with_delay_cannot_be_interrupted(SHT3X_I2C_RESULT_CODE_BUS_ERROR);
+}
+
+TEST(SHT3X, SoftResetWithDelaySuccessCannotBeInterrupted)
+{
+    test_soft_reset_with_delay_cannot_be_interrupted(SHT3X_I2C_RESULT_CODE_OK);
+}

@@ -1149,9 +1149,7 @@ uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_d
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_soft_reset_cmd(self, soft_reset_with_delay_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
