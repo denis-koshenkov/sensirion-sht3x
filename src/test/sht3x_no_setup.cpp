@@ -192,3 +192,101 @@ TEST(SHT3XNoSetup, CreateSucceedsWithI2cAddr0x45)
 
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
 }
+
+TEST(SHT3XNoSetup, IsCrcOfLastWriteTransferCorrectTrue)
+{
+    uint16_t status_reg_val = 0xFFFE;
+    bool ret = sht3x_is_crc_of_last_write_transfer_correct(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsCrcOfLastWriteTransferCorrectFalse)
+{
+    uint16_t status_reg_val = 0x0001;
+    bool ret = sht3x_is_crc_of_last_write_transfer_correct(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsLastCommandExecutedSuccessfullyTrue)
+{
+    uint16_t status_reg_val = 0xFFFD;
+    bool ret = sht3x_is_last_command_executed_successfully(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsLastCommandExecutedSuccessfullyFalse)
+{
+    uint16_t status_reg_val = 0x0002;
+    bool ret = sht3x_is_last_command_executed_successfully(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsSystemResetDetectedTrue)
+{
+    uint16_t status_reg_val = 0x0010;
+    bool ret = sht3x_is_system_reset_detected(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsSystemResetDetectedFalse)
+{
+    uint16_t status_reg_val = 0xFFEF;
+    bool ret = sht3x_is_system_reset_detected(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsTemperatureAlertActiveTrue)
+{
+    uint16_t status_reg_val = 0x0400;
+    bool ret = sht3x_is_temperature_alert_raised(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsTemperatureAlertActiveFalse)
+{
+    uint16_t status_reg_val = 0xFBFF;
+    bool ret = sht3x_is_temperature_alert_raised(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsHumidityAlertActiveTrue)
+{
+    uint16_t status_reg_val = 0x0800;
+    bool ret = sht3x_is_humidity_alert_raised(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsHumidityAlertActiveFalse)
+{
+    uint16_t status_reg_val = 0xF7FF;
+    bool ret = sht3x_is_humidity_alert_raised(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsHeaterOnTrue)
+{
+    uint16_t status_reg_val = 0x2000;
+    bool ret = sht3x_is_heater_on(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsHeaterOnFalse)
+{
+    uint16_t status_reg_val = 0xDFFF;
+    bool ret = sht3x_is_heater_on(status_reg_val);
+    CHECK_FALSE(ret);
+}
+
+TEST(SHT3XNoSetup, IsAtLeastOneAlertPendingTrue)
+{
+    uint16_t status_reg_val = 0x8000;
+    bool ret = sht3x_is_at_least_one_alert_pending(status_reg_val);
+    CHECK_TRUE(ret);
+}
+
+TEST(SHT3XNoSetup, IsAtLeastOneAlertPendingFalse)
+{
+    uint16_t status_reg_val = 0x7FFF;
+    bool ret = sht3x_is_at_least_one_alert_pending(status_reg_val);
+    CHECK_FALSE(ret);
+}

@@ -647,6 +647,76 @@ uint8_t sht3x_read_status_register(SHT3X self, bool verify_crc, SHT3XReadStatusR
  */
 uint8_t sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data);
 
+/**
+ * @brief Check whether CRC of last write transfer was correct.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true CRC of last write transfer was correct.
+ * @retval false CRC of last write transfer failed.
+ */
+bool sht3x_is_crc_of_last_write_transfer_correct(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether last command was executed successfully.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true Last command was executed successfully.
+ * @retval false Last command was not processed. It was either invalid or failed the CRC check.
+ */
+bool sht3x_is_last_command_executed_successfully(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether system reset was detected since last clear status register command.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true System reset detected (hard reset, soft reset command, or supply fail).
+ * @retval false No system reset since last clear status register command.
+ */
+bool sht3x_is_system_reset_detected(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether temperature alert is currently raised.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true Temperature alert is raised.
+ * @retval false Temperature alert is not raised.
+ */
+bool sht3x_is_temperature_alert_raised(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether humidity alert is currently raised.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true Humidity alert is raised.
+ * @retval false Humidity alert is not raised.
+ */
+bool sht3x_is_humidity_alert_raised(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether heater is on.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true Heater is on.
+ * @retval false Heater is off.
+ */
+bool sht3x_is_heater_on(uint16_t status_reg_val);
+
+/**
+ * @brief Check whether at least one alert is pending.
+ *
+ * @param status_reg_val Status register value read out using @ref sht3x_read_status_register.
+ *
+ * @retval true At least one alert is pending.
+ * @retval false There are no pending alerts.
+ */
+bool sht3x_is_at_least_one_alert_pending(uint16_t status_reg_val);
+
 #ifdef __cplusplus
 }
 #endif

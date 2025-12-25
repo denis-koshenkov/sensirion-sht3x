@@ -87,6 +87,14 @@
 #define SHT3X_READ_STATUS_REG_CMD_MSB 0xF3
 #define SHT3X_READ_STATUS_REG_CMD_LSB 0x2D
 
+#define SHT3X_STATUS_REG_WRITE_DATA_CHECKSUM_STATUS_MASK (1U << 0)
+#define SHT3X_STATUS_REG_COMMAND_STATUS_MASK (1U << 1)
+#define SHT3X_STATUS_REG_SYSTEM_RESET_DETECTED_MASK (1U << 4)
+#define SHT3X_STATUS_REG_T_TRACKING_ALERT_MASK (1U << 10)
+#define SHT3X_STATUS_REG_RH_TRACKING_ALERT_MASK (1U << 11)
+#define SHT3X_STATUS_REG_HEATER_STATUS_MASK (1U << 13)
+#define SHT3X_STATUS_REG_ALERT_PENDING_STATUS_MASK (1U << 15)
+
 typedef enum {
     SHT3X_SEQUENCE_TYPE_GENERIC,
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
@@ -1282,4 +1290,39 @@ uint8_t sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, 
         free_instance_memory((void *)self, user_data);
     }
     return SHT3X_RESULT_CODE_OK;
+}
+
+bool sht3x_is_crc_of_last_write_transfer_correct(uint16_t status_reg_val)
+{
+    return !((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_WRITE_DATA_CHECKSUM_STATUS_MASK);
+}
+
+bool sht3x_is_last_command_executed_successfully(uint16_t status_reg_val)
+{
+    return !((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_COMMAND_STATUS_MASK);
+}
+
+bool sht3x_is_system_reset_detected(uint16_t status_reg_val)
+{
+    return ((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_SYSTEM_RESET_DETECTED_MASK);
+}
+
+bool sht3x_is_temperature_alert_raised(uint16_t status_reg_val)
+{
+    return ((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_T_TRACKING_ALERT_MASK);
+}
+
+bool sht3x_is_humidity_alert_raised(uint16_t status_reg_val)
+{
+    return ((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_RH_TRACKING_ALERT_MASK);
+}
+
+bool sht3x_is_heater_on(uint16_t status_reg_val)
+{
+    return ((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_HEATER_STATUS_MASK);
+}
+
+bool sht3x_is_at_least_one_alert_pending(uint16_t status_reg_val)
+{
+    return ((status_reg_val) & (uint16_t)SHT3X_STATUS_REG_ALERT_PENDING_STATUS_MASK);
 }
