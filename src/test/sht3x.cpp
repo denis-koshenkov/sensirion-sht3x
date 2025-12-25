@@ -3107,3 +3107,43 @@ TEST(SHT3X, DestroySelfNull)
 
     CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
 }
+
+TEST(SHT3X, SingleShotMeasCmdCannotBeInterrupted)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Single shot meas with medium repeatability and clock stretching disabled command */
+    uint8_t i2c_write_data_single_shot_meas[] = {0x24, 0x0B};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data_single_shot_meas, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+    /* Clear status register command */
+    uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM,
+                                                        SHT3X_CLOCK_STRETCHING_DISABLED, sht3x_complete_cb, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+
+    uint8_t other_cmd_rc;
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+    i2c_write_complete_cb(SHT3X_I2C_RESULT_CODE_OK, i2c_write_complete_cb_user_data);
+
+    /* Sequence finished, other operations are now allowed */
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, other_cmd_rc);
+
+    CHECK_EQUAL(1, complete_cb_call_count);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, complete_cb_result_code);
+}

@@ -747,8 +747,11 @@ static void execute_complete_cb(SHT3X self, uint8_t rc)
         return;
     }
     SHT3XCompleteCb cb = (SHT3XCompleteCb)self->sequence_cb;
+    void *user_data = self->sequence_cb_user_data;
+    /* Public functions can now be called, they will not return BUSY anymore because sequence is complete. */
+    reset_sequence_data(self);
     if (cb) {
-        cb(rc, self->sequence_cb_user_data);
+        cb(rc, user_data);
     }
 }
 
@@ -914,14 +917,14 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
 
     uint8_t rc =
         send_single_shot_meas_cmd(self, repeatability, clock_stretching, generic_i2c_complete_cb, (void *)self);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* This should always succeed, because we pass a valid self pointer, and we validate repeatability and clock
          * stretching options. */
+        reset_sequence_data(self);
         return SHT3X_RESULT_CODE_DRIVER_ERR;
     }
 
