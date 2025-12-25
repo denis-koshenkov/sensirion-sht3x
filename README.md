@@ -4,7 +4,7 @@ Driver for Sensirion SHT3X temperature & humidity sensor that supports non-block
 # Integration Details
 Add the following to your build:
 - `src/sht3x.c` source file
-- `src` directory as an include directory
+- `src` directory as include directory
 
 # Usage
 In order to use this driver, you need to implement the following functions:
@@ -162,21 +162,19 @@ That thread would then invoke the `SHT3X_I2CTransactionCompleteCb` that was pass
 
 The same applies to executing completion callbacks passed to `sht3x_i2c_read` and `sht3x_start_timer`.
 
-# How to build and execute tests
-Option 1: Use the script:
+# Running Tests
+Prerequisites:
+- CMake
+- C compiler (e.g. GCC)
+- C++ compiler (e.g. G++)
+
+1. Clone this repository
+2. Fetch the CppUTest submodule:
+```
+git submodule init
+git submodule update
+```
+3. Build and run the tests:
 ```
 ./run_tests.sh
-```
-
-Option 2: execute the following commands from the repository root directory.
-
-Build test executable:
-```
-cmake -GNinja -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-cmake --build build --
-```
-
-Run test executable:
-```
-./build/src/test/test
 ```
