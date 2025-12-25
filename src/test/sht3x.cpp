@@ -3059,7 +3059,7 @@ TEST(SHT3X, ClearStatusRegisterBusy)
 static uint8_t read_single_shot_measurement()
 {
     return sht3x_read_single_shot_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_CLOCK_STRETCHING_ENABLED,
-                                              SHT3X_FLAG_READ_HUM, sht3x_meas_complete_cb, NULL);
+                                              SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, NULL);
 }
 
 TEST(SHT3X, ReadSingleShotMeasurementBusy)
@@ -3069,8 +3069,7 @@ TEST(SHT3X, ReadSingleShotMeasurementBusy)
 
 static uint8_t read_periodic_measurement()
 {
-    return sht3x_read_periodic_measurement(sht3x, SHT3X_FLAG_READ_HUM | SHT3X_FLAG_VERIFY_CRC_HUM,
-                                           sht3x_meas_complete_cb, NULL);
+    return sht3x_read_periodic_measurement(sht3x, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, NULL);
 }
 
 TEST(SHT3X, ReadPeriodicMeasurementBusy)
@@ -3159,7 +3158,6 @@ TEST(SHT3X, ReadMeasurementCannotBeInterrupted)
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
 
     uint8_t i2c_read_data[] = {0x62, 0x60};
-    /* Expecting to read 5 bytes, because the 6th byte is the humidity CRC, and we are not verifying humidity CRC. */
     mock()
         .expectOneCall("mock_sht3x_i2c_read")
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
@@ -3218,4 +3216,147 @@ TEST(SHT3X, StopPeriodicMeasurementCannotBeInterrupted)
     uint8_t i2c_write_data[] = {0x30, 0x93};
     test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK,
                                              stop_periodic_measurement);
+}
+
+TEST(SHT3X, SoftResetCannotBeInterrupted)
+{
+    /* Soft reset command */
+    uint8_t i2c_write_data[] = {0x30, 0xA2};
+    test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_BUS_ERROR, soft_reset);
+}
+
+TEST(SHT3X, EnableHeaterCannotBeInterrupted)
+{
+    /* Enable heater command */
+    uint8_t i2c_write_data[] = {0x30, 0x6D};
+    test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_OK, enable_heater);
+}
+
+TEST(SHT3X, DisableHeaterCannotBeInterrupted)
+{
+    /* Disable heater command */
+    uint8_t i2c_write_data[] = {0x30, 0x66};
+    test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, disable_heater);
+}
+
+TEST(SHT3X, SendReadStatusRegCmdCannotBeInterrupted)
+{
+    /* Read status reg command */
+    uint8_t i2c_write_data[] = {0xF3, 0x2D};
+    test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_BUS_ERROR,
+                                             send_read_status_register_cmd);
+}
+
+TEST(SHT3X, ClearStatusRegCannotBeInterrupted)
+{
+    /* Clear status reg command */
+    uint8_t i2c_write_data[] = {0x30, 0x41};
+    test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_OK, clear_status_register);
+}
+
+static void test_read_meas_seq_cannot_be_interrupted(SHT3XFunction start_seq, uint8_t *i2c_write_data,
+                                                     uint8_t i2c_write_rc, uint8_t i2c_read_rc)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    size_t i2c_data_len = sizeof(i2c_read_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_i2c_read")
+            .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
+            .withParameter("length", i2c_data_len)
+            .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+            .ignoreOtherParameters();
+    }
+    /* Clear status register command */
+    uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+
+    uint8_t rc = start_seq();
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+
+    uint8_t other_cmd_rc;
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+    i2c_write_complete_cb(i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        /* Timer period is ongoing */
+        other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+        CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+        timer_expired_cb(timer_expired_cb_user_data);
+
+        /* I2C read is ongoing */
+        other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+        CHECK_EQUAL(SHT3X_RESULT_CODE_BUSY, other_cmd_rc);
+
+        i2c_read_complete_cb(i2c_read_rc, i2c_read_complete_cb_user_data);
+    }
+
+    /* Sequence finished, other operations are now allowed */
+    other_cmd_rc = sht3x_clear_status_register(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, other_cmd_rc);
+}
+
+TEST(SHT3X, ReadSingleShotMeasurementWriteFailCannotBeInterrupted)
+{
+    /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
+    uint8_t i2c_write_data[] = {0x2C, 0x0D};
+    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data,
+                                             SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+}
+
+TEST(SHT3X, ReadSingleShotMeasurementReadFailCannotBeInterrupted)
+{
+    /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
+    uint8_t i2c_write_data[] = {0x2C, 0x0D};
+    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                             SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+}
+
+TEST(SHT3X, ReadSingleShotMeasurementSuccessCannotBeInterrupted)
+{
+    /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
+    uint8_t i2c_write_data[] = {0x2C, 0x0D};
+    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                             SHT3X_I2C_RESULT_CODE_OK);
+}
+
+TEST(SHT3X, ReadPeriodicMeasWriteFailCannotBeInterrupted)
+{
+    /* Fetch data cmd */
+    uint8_t i2c_write_data[] = {0xE0, 0x0};
+    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_BUS_ERROR,
+                                             SHT3X_I2C_RESULT_CODE_BUS_ERROR);
+}
+
+TEST(SHT3X, ReadPeriodicMeasReadFailCannotBeInterrupted)
+{
+    /* Fetch data cmd */
+    uint8_t i2c_write_data[] = {0xE0, 0x0};
+    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                             SHT3X_I2C_RESULT_CODE_BUS_ERROR);
+}
+
+TEST(SHT3X, ReadPeriodicMeasSuccessCannotBeInterrupted)
+{
+    /* Fetch data cmd */
+    uint8_t i2c_write_data[] = {0xE0, 0x0};
+    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                             SHT3X_I2C_RESULT_CODE_OK);
 }

@@ -1030,9 +1030,7 @@ uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data)
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_soft_reset_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1060,9 +1058,7 @@ uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data)
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_disable_heater_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1076,9 +1072,7 @@ uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_read_status_reg_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1092,9 +1086,7 @@ uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_d
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_clear_status_reg_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1123,6 +1115,7 @@ uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, ui
     rc = send_single_shot_meas_cmd(self, repeatability, clock_stretching, read_meas_seq_part_2, (void *)self);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* Should always succeed, because we validate self pointer, and repeatability and clock stretching options. */
+        reset_sequence_data(self);
         return SHT3X_RESULT_CODE_DRIVER_ERR;
     }
 
