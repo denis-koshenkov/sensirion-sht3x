@@ -178,8 +178,12 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
                                                SHT3XCompleteCb cb, void *user_data);
 
 /**
- * @brief Read previously requested single shot measurements.
+ * @brief Read previously requested measurements.
  *
+ * This function can be used in two ways: reading out previously requested single shot measurement and reading out
+ * periodic measurements.
+ *
+ * Reading out single shot measurements.
  * Requesting single shot measurements is done by calling @ref sht3x_send_single_shot_measurement_cmd. That function can
  * be called with clock stretching enabled or disabled. This option affects the behavior of this function.
  *
@@ -198,6 +202,19 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
  *
  * In that case, this function will need to be called again later. If the measurements are ready, they will be read out
  * and result_code parameter in @p cb will be set to @ref SHT3X_RESULT_CODE_OK.
+ *
+ * Reading out periodic measurements.
+ * Periodic measurements first need to be started by calling @ref sht3x_start_periodic_measurement or @ref
+ * sht3x_start_periodic_measurement_art. This needs to be done once.
+ *
+ * After that, the device starts performing periodic measurements. Every time measurements need to be read out, do the
+ * following:
+ * 1. Call @ref sht3x_fetch_periodic_measurement_data.
+ * 2. Call this function to read out the measurements.
+ *
+ * If there are no measurements available, there will be a NAK after the address byte on the I2C bus. In that case, the
+ * result_code parameter in @p cb will be set to @ref SHT3X_RESULT_CODE_NO_DATA. Once a specific measurement is read
+ * out, result_code will be @ref SHT3X_RESULT_CODE_NO_DATA until the device generates a new measurement.
  *
  * The following flags can be passed to the @p flags parameter:
  * - @ref SHT3X_FLAG_READ_TEMP Temperature measurement will be read out. If result_code parameter in @p cb is set to
@@ -232,13 +249,14 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
  * @param[in] cb Callback to execute once complete. Can be NULL if not required. The result_code parameter will signify
  * success or reason for failure, and meas parameter will contain a pointer to requested measurements if result_code is
  * SHT3X_RESULT_CODE_OK. Note that only requested measurements will be available. For example, if only @ref
- * SHT3X_FLAG_READ_HUM flag was set, meas->temperature inside @p cb has undefined value and should not be used.
+ * SHT3X_FLAG_READ_HUM flag was set, meas->temperature inside @p cb has an undefined value and should not be used.
  * @param[in] user_data User data to pass to @p cb.
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully triggered measurement reaodut. Note that this does not mean that
  * measurement readout was successful - this is indicated by the result_code parameter of @p cb.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, or combination of @p flags is invalid.
  * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
+ * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
  */
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
