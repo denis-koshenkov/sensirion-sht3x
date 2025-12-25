@@ -1,6 +1,11 @@
 # Sensirion SHT3X Driver
 Driver for Sensirion SHT3X temperature & humidity sensor that supports non-blocking mode of operation.
 
+# Integration Details
+Add the following to your build:
+- `src/sht3x.c` source file
+- `src` directory as an include directory
+
 # Usage
 In order to use this driver, you need to implement the following functions:
 ```
