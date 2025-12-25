@@ -125,7 +125,8 @@ TEST(SHT3X, DestroyCallsFreeInstanceMemory)
         .withParameter("instance_memory", (void *)&instance_memory)
         .withParameter("user_data", free_instance_memory_user_data);
 
-    sht3x_destroy(sht3x, mock_sht3x_free_instance_memory, free_instance_memory_user_data);
+    uint8_t destroy_rc = sht3x_destroy(sht3x, mock_sht3x_free_instance_memory, free_instance_memory_user_data);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, destroy_rc);
 }
 
 TEST(SHT3X, DestroyCalledWithFreeInstanceMemoryNullDoesNotCrash)
@@ -133,7 +134,8 @@ TEST(SHT3X, DestroyCalledWithFreeInstanceMemoryNullDoesNotCrash)
     uint8_t rc = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
 
-    sht3x_destroy(sht3x, NULL, NULL);
+    uint8_t destroy_rc = sht3x_destroy(sht3x, NULL, NULL);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, destroy_rc);
 }
 
 typedef struct {
@@ -3084,4 +3086,24 @@ static uint8_t soft_reset_with_delay()
 TEST(SHT3X, SoftResetWithDelayBusy)
 {
     test_busy_if_seq_in_progress(soft_reset_with_delay);
+}
+
+static uint8_t destroy()
+{
+    return sht3x_destroy(sht3x, NULL, NULL);
+}
+
+TEST(SHT3X, DestroyBusy)
+{
+    test_busy_if_seq_in_progress(destroy);
+}
+
+TEST(SHT3X, DestroySelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    uint8_t rc = sht3x_destroy(NULL, NULL, NULL);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
 }

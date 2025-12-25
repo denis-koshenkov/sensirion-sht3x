@@ -1165,9 +1165,19 @@ uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_d
     return SHT3X_RESULT_CODE_OK;
 }
 
-void sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data)
+uint8_t sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data)
 {
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    /* If a sequence is ongoing, then self will be later accessed inside a I2C complete or timer expired callback. But
+     * it would not be a valid instance anymore, and that memory might already be freed and contain garbage values.
+     * Because of this, destroying an instance is not allowed if there is a sequence in progress. */
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
     if (free_instance_memory) {
         free_instance_memory((void *)self, user_data);
     }
+    return SHT3X_RESULT_CODE_OK;
 }

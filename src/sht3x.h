@@ -172,6 +172,7 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg);
  * @retval SHT3X_RESULT_CODE_IO_ERR I2C transaction failed - SHT3X_I2CWrite function did not return
  * SHT3X_I2C_RESULT_CODE_OK.
  * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability, uint8_t clock_stretching,
                                                SHT3XCompleteCb cb, void *user_data);
@@ -237,6 +238,7 @@ uint8_t sht3x_send_single_shot_measurement_cmd(SHT3X self, uint8_t repeatability
  * @retval SHT3X_RESULT_CODE_OK Successfully triggered measurement reaodut. Note that this does not mean that
  * measurement readout was successful - this is indicated by the result_code parameter of @p cb.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, or combination of @p flags is invalid.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
@@ -258,6 +260,7 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, or @p mps option is
  * invalid.
  * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint8_t mps, SHT3XCompleteCb cb,
                                          void *user_data);
@@ -276,6 +279,7 @@ uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -293,6 +297,7 @@ uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, voi
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -310,6 +315,7 @@ uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, vo
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -327,6 +333,7 @@ uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *us
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending of soft reset command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -344,6 +351,7 @@ uint8_t sht3x_soft_reset(SHT3X self, SHT3XCompleteCb cb, void *user_data);
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -361,6 +369,7 @@ uint8_t sht3x_enable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -378,6 +387,7 @@ uint8_t sht3x_disable_heater(SHT3X self, SHT3XCompleteCb cb, void *user_data);
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -395,6 +405,7 @@ uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the command.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -421,6 +432,7 @@ uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasComp
  *
  * @retval SHT3X_RESULT_CODE_OK Successfully initiated sending the soft reset with delay sequence.
  * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
@@ -431,8 +443,12 @@ uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_d
  * @param[in] free_instance_memory Optional user-defined function to free SHT3X instance memory. See @ref
  * SHT3XFreeInstanceMemory. Pass NULL if not needed.
  * @param[in] user_data Optional user data to pass to @p free_instance_memory function.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully destroyed the instance.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed to destroy the instance, because there is currently a sequence in progress.
  */
-void sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data);
+uint8_t sht3x_destroy(SHT3X self, SHT3XFreeInstanceMemory free_instance_memory, void *user_data);
 
 #ifdef __cplusplus
 }
