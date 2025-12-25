@@ -966,13 +966,13 @@ uint8_t sht3x_start_periodic_measurement(SHT3X self, uint8_t repeatability, uint
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
 
     uint8_t rc = send_start_periodic_meas_cmd(self, repeatability, mps, generic_i2c_complete_cb, (void *)self);
     if (rc != SHT3X_RESULT_CODE_OK) {
         /* This should always succeed, because we pass a valid self pointer, and we validate repeatability and mps
          * options. */
+        reset_sequence_data(self);
         return SHT3X_RESULT_CODE_DRIVER_ERR;
     }
 
@@ -988,9 +988,7 @@ uint8_t sht3x_start_periodic_measurement_art(SHT3X self, SHT3XCompleteCb cb, voi
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_start_periodic_meas_art_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1004,9 +1002,7 @@ uint8_t sht3x_fetch_periodic_measurement_data(SHT3X self, SHT3XCompleteCb cb, vo
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_fetch_data_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
@@ -1020,9 +1016,7 @@ uint8_t sht3x_stop_periodic_measurement(SHT3X self, SHT3XCompleteCb cb, void *us
         return SHT3X_RESULT_CODE_BUSY;
     }
 
-    self->sequence_cb = (void *)cb;
-    self->sequence_cb_user_data = user_data;
-
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_stop_periodic_meas_cmd(self, generic_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
