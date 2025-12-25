@@ -505,6 +505,7 @@ static void reset_sequence_data(SHT3X self)
     /* No ongoing sequence */
     self->sequence_type = SHT3X_SEQUENCE_TYPE_NO_SEQ;
     self->sequence_flags = 0;
+    self->sequence_i2c_read_len = 0;
     self->sequence_timer_period = 0;
 }
 
@@ -576,14 +577,14 @@ static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
 }
 
 /**
- * @brief Thin wrapper around i2c_read for measurement readout command.
+ * @brief Thin wrapper around i2c_read for sending a read command.
  *
  * @param[in] self SHT3X instance.
  * @param[in] length Number of bytes to read out from the device.
  * @param[in] cb Callback to execute once complete.
  * @param[in] user_data User data to pass to callback.
  */
-static void send_read_measurement_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
+static void send_read_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, cb, user_data);
 }
@@ -780,6 +781,27 @@ static void execute_complete_cb(SHT3X self, uint8_t rc)
     }
 }
 
+/**
+ * @brief Interpret self->sequence_cb as ReadStatusRegCompleteCb and execute it, if available.
+ *
+ * @param[in] self SHT3X instance.
+ * @param[in] rc Return code to pass to ReadStatusRegCompleteCb, use @ref SHT3XResultCode.
+ * @param[in] status_reg_val Status register value to pass to ReadStatusRegCompleteCb.
+ */
+static void execute_read_status_reg_complete_cb(SHT3X self, uint8_t rc, uint16_t status_reg_val)
+{
+    if (!self) {
+        return;
+    }
+    SHT3XReadStatusRegCompleteCb cb = (SHT3XReadStatusRegCompleteCb)self->sequence_cb;
+    void *user_data = self->sequence_cb_user_data;
+    /* Public functions can now be called again - sequence complete */
+    reset_sequence_data(self);
+    if (cb) {
+        cb(rc, status_reg_val, user_data);
+    }
+}
+
 static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
 {
     SHT3X self = (SHT3X)user_data;
@@ -866,7 +888,7 @@ static void read_meas_seq_part_3(void *user_data)
         execute_meas_complete_cb(self, SHT3X_RESULT_CODE_DRIVER_ERR, NULL);
     }
 
-    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
+    send_read_cmd(self, length, meas_i2c_complete_cb, (void *)self);
 }
 
 static void read_meas_seq_part_2(uint8_t result_code, void *user_data)
@@ -909,6 +931,60 @@ static void soft_reset_with_delay_part_2(uint8_t result_code, void *user_data)
 
     /* Give sensor time to perform soft reset */
     self->start_timer(SHT3X_SOFT_RESET_DELAY_MS, soft_reset_with_delay_part_3, (void *)self);
+}
+
+static void read_status_reg_part_4(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    uint8_t rc;
+    uint16_t reg_val;
+    if (result_code == SHT3X_I2C_RESULT_CODE_OK) {
+        reg_val = two_big_endian_bytes_to_uint16(&(self->i2c_read_buf[0]));
+        if (self->sequence_i2c_read_len == 3) {
+            /* If we read 3 bytes, need to verify the CRC, otherwise we would not have read the third byte */
+            uint8_t expected_crc = sht3x_crc8(&(self->i2c_read_buf[0]));
+            uint8_t actual_crc = self->i2c_read_buf[2];
+            rc = (expected_crc == actual_crc) ? SHT3X_RESULT_CODE_OK : SHT3X_RESULT_CODE_CRC_MISMATCH;
+        } else {
+            rc = SHT3X_RESULT_CODE_OK;
+        }
+    } else {
+        rc = SHT3X_RESULT_CODE_IO_ERR;
+        reg_val = 0;
+    }
+
+    execute_read_status_reg_complete_cb(self, rc, reg_val);
+}
+
+static void read_status_reg_part_3(void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    send_read_cmd(self, self->sequence_i2c_read_len, read_status_reg_part_4, (void *)self);
+}
+
+static void read_status_reg_part_2(uint8_t result_code, void *user_data)
+{
+    SHT3X self = (SHT3X)user_data;
+    if (!self) {
+        return;
+    }
+
+    if (result_code != SHT3X_I2C_RESULT_CODE_OK) {
+        /* Previous I2C write failed, execute read status reg complete cb to indicate failure */
+        execute_read_status_reg_complete_cb(self, SHT3X_RESULT_CODE_IO_ERR, 0);
+        return;
+    }
+
+    /* Mandatory 1 ms delay between two I2C commands */
+    self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, read_status_reg_part_3, (void *)self);
 }
 
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
@@ -974,7 +1050,7 @@ uint8_t sht3x_read_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb
     start_sequence(self, SHT3X_SEQUENCE_TYPE_READ_MEAS, cb, user_data);
     self->sequence_flags = flags;
 
-    send_read_measurement_cmd(self, length, meas_i2c_complete_cb, (void *)self);
+    send_read_cmd(self, length, meas_i2c_complete_cb, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -1173,6 +1249,21 @@ uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_d
 
     start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
     send_soft_reset_cmd(self, soft_reset_with_delay_part_2, (void *)self);
+    return SHT3X_RESULT_CODE_OK;
+}
+
+uint8_t sht3x_read_status_register(SHT3X self, bool verify_crc, SHT3XReadStatusRegCompleteCb cb, void *user_data)
+{
+    if (!self) {
+        return SHT3X_RESULT_CODE_INVALID_ARG;
+    }
+    if (is_sequence_ongoing(self)) {
+        return SHT3X_RESULT_CODE_BUSY;
+    }
+
+    start_sequence(self, SHT3X_SEQUENCE_TYPE_GENERIC, (void *)cb, user_data);
+    self->sequence_i2c_read_len = verify_crc ? 3 : 2;
+    send_read_status_reg_cmd(self, read_status_reg_part_2, (void *)self);
     return SHT3X_RESULT_CODE_OK;
 }
 

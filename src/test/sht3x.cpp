@@ -40,6 +40,11 @@ static size_t complete_cb_call_count;
 static uint8_t complete_cb_result_code;
 static void *complete_cb_user_data;
 
+static size_t read_status_reg_complete_cb_call_count;
+static uint8_t read_status_reg_complete_cb_result_code;
+static uint16_t read_status_reg_complete_cb_reg_val;
+static void *read_status_reg_complete_cb_user_data;
+
 static void sht3x_meas_complete_cb(uint8_t result_code, SHT3XMeasurement *meas, void *user_data)
 {
     meas_complete_cb_call_count++;
@@ -55,6 +60,14 @@ static void sht3x_complete_cb(uint8_t result_code, void *user_data)
     complete_cb_call_count++;
     complete_cb_result_code = result_code;
     complete_cb_user_data = user_data;
+}
+
+static void sht3x_read_status_reg_complete_cb(uint8_t result_code, uint16_t reg_val, void *user_data)
+{
+    read_status_reg_complete_cb_call_count++;
+    read_status_reg_complete_cb_result_code = result_code;
+    read_status_reg_complete_cb_reg_val = reg_val;
+    read_status_reg_complete_cb_user_data = user_data;
 }
 
 // clang-format off
@@ -92,6 +105,12 @@ TEST_GROUP(SHT3X)
         complete_cb_call_count = 0;
         complete_cb_result_code = 0xFF; /* 0 is a valid code, reset to an invalid code */
         complete_cb_user_data = NULL;
+
+        /* Reset values populated whenever sht3x_read_status_reg_complete_cb gets called */
+        read_status_reg_complete_cb_call_count = 0;
+        read_status_reg_complete_cb_result_code = 0xFF; /* 0 is a valid code, reset to an invalid code */
+        read_status_reg_complete_cb_reg_val = 0x00FF;
+        read_status_reg_complete_cb_user_data = NULL;
         
         sht3x = NULL;
         memset(&init_cfg, 0, sizeof(SHT3XInitConfig));
@@ -2943,6 +2962,7 @@ static void test_busy_if_seq_in_progress(SHT3XFunction function)
     /* User cb should not be called when busy is returned */
     CHECK_EQUAL(0, complete_cb_call_count);
     CHECK_EQUAL(0, meas_complete_cb_call_count);
+    CHECK_EQUAL(0, read_status_reg_complete_cb_call_count);
 }
 
 static uint8_t send_single_shot_meas_cmd()
@@ -3085,6 +3105,16 @@ static uint8_t soft_reset_with_delay()
 TEST(SHT3X, SoftResetWithDelayBusy)
 {
     test_busy_if_seq_in_progress(soft_reset_with_delay);
+}
+
+static uint8_t read_status_register()
+{
+    return sht3x_read_status_register(sht3x, SHT3X_VERIFY_CRC_NO, sht3x_read_status_reg_complete_cb, NULL);
+}
+
+TEST(SHT3X, ReadStatusRegisterBusy)
+{
+    test_busy_if_seq_in_progress(read_status_register);
 }
 
 static uint8_t destroy()
@@ -3254,8 +3284,8 @@ TEST(SHT3X, ClearStatusRegCannotBeInterrupted)
     test_i2c_write_seq_cannot_be_interrupted(i2c_write_data, SHT3X_I2C_RESULT_CODE_OK, clear_status_register);
 }
 
-static void test_read_meas_seq_cannot_be_interrupted(SHT3XFunction start_seq, uint8_t *i2c_write_data,
-                                                     uint8_t i2c_write_rc, uint8_t i2c_read_rc)
+static void test_write_read_seq_cannot_be_interrupted(SHT3XFunction start_seq, uint8_t *i2c_write_data,
+                                                      uint8_t i2c_write_rc, uint8_t *i2c_read_data, uint8_t i2c_read_rc)
 {
     uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
     CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
@@ -3266,8 +3296,7 @@ static void test_read_meas_seq_cannot_be_interrupted(SHT3XFunction start_seq, ui
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
         .ignoreOtherParameters();
-    uint8_t i2c_read_data[] = {0x62, 0x60};
-    size_t i2c_data_len = sizeof(i2c_read_data);
+    size_t i2c_data_len = 2;
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
         mock()
@@ -3317,48 +3346,83 @@ TEST(SHT3X, ReadSingleShotMeasurementWriteFailCannotBeInterrupted)
 {
     /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
     uint8_t i2c_write_data[] = {0x2C, 0x0D};
-    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data,
-                                             SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data,
+                                              SHT3X_I2C_RESULT_CODE_ADDRESS_NACK, i2c_read_data,
+                                              SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
 }
 
 TEST(SHT3X, ReadSingleShotMeasurementReadFailCannotBeInterrupted)
 {
     /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
     uint8_t i2c_write_data[] = {0x2C, 0x0D};
-    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
-                                             SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
 }
 
 TEST(SHT3X, ReadSingleShotMeasurementSuccessCannotBeInterrupted)
 {
     /* Single shot measurement cmd with medium repeatability and clock stretching enabled */
     uint8_t i2c_write_data[] = {0x2C, 0x0D};
-    test_read_meas_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
-                                             SHT3X_I2C_RESULT_CODE_OK);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_single_shot_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_OK);
 }
 
 TEST(SHT3X, ReadPeriodicMeasWriteFailCannotBeInterrupted)
 {
     /* Fetch data cmd */
     uint8_t i2c_write_data[] = {0xE0, 0x0};
-    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_BUS_ERROR,
-                                             SHT3X_I2C_RESULT_CODE_BUS_ERROR);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data,
+                                              SHT3X_I2C_RESULT_CODE_BUS_ERROR, i2c_read_data,
+                                              SHT3X_I2C_RESULT_CODE_BUS_ERROR);
 }
 
 TEST(SHT3X, ReadPeriodicMeasReadFailCannotBeInterrupted)
 {
     /* Fetch data cmd */
     uint8_t i2c_write_data[] = {0xE0, 0x0};
-    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
-                                             SHT3X_I2C_RESULT_CODE_BUS_ERROR);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_BUS_ERROR);
 }
 
 TEST(SHT3X, ReadPeriodicMeasSuccessCannotBeInterrupted)
 {
     /* Fetch data cmd */
     uint8_t i2c_write_data[] = {0xE0, 0x0};
-    test_read_meas_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
-                                             SHT3X_I2C_RESULT_CODE_OK);
+    uint8_t i2c_read_data[] = {0x62, 0x60};
+    test_write_read_seq_cannot_be_interrupted(read_periodic_measurement, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_OK);
+}
+
+TEST(SHT3X, ReadStatusRegWriteFailCannotBeInterrupted)
+{
+    /* Read status register command */
+    uint8_t i2c_write_data[] = {0xF3, 0x2D};
+    uint8_t i2c_read_data[] = {0x80, 0x00};
+    test_write_read_seq_cannot_be_interrupted(read_status_register, i2c_write_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+}
+
+TEST(SHT3X, ReadStatusRegReadFailCannotBeInterrupted)
+{
+    /* Read status register command */
+    uint8_t i2c_write_data[] = {0xF3, 0x2D};
+    uint8_t i2c_read_data[] = {0x80, 0x00};
+    test_write_read_seq_cannot_be_interrupted(read_status_register, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_ADDRESS_NACK);
+}
+
+TEST(SHT3X, ReadStatusRegSuccessCannotBeInterrupted)
+{
+    /* Read status register command */
+    uint8_t i2c_write_data[] = {0xF3, 0x2D};
+    uint8_t i2c_read_data[] = {0x80, 0x00};
+    test_write_read_seq_cannot_be_interrupted(read_status_register, i2c_write_data, SHT3X_I2C_RESULT_CODE_OK,
+                                              i2c_read_data, SHT3X_I2C_RESULT_CODE_OK);
 }
 
 static void test_soft_reset_with_delay_cannot_be_interrupted(uint8_t i2c_write_rc)
@@ -3414,4 +3478,219 @@ TEST(SHT3X, SoftResetWithDelayWriteFailCannotBeInterrupted)
 TEST(SHT3X, SoftResetWithDelaySuccessCannotBeInterrupted)
 {
     test_soft_reset_with_delay_cannot_be_interrupted(SHT3X_I2C_RESULT_CODE_OK);
+}
+
+typedef struct {
+    uint8_t i2c_write_rc;
+    uint8_t *i2c_read_data;
+    uint8_t i2c_data_len;
+    uint8_t i2c_read_rc;
+    bool verify_crc;
+    SHT3XReadStatusRegCompleteCb complete_cb;
+    void *complete_cb_user_data_expected;
+    uint8_t expected_complete_cb_rc;
+    uint16_t *status_reg_val_expected;
+} TestReadStatusRegCfg;
+
+static void test_read_status_register(const TestReadStatusRegCfg *const cfg)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    /* Read status reg command */
+    uint8_t i2c_write_data[] = {0xF3, 0x2D};
+    mock()
+        .expectOneCall("mock_sht3x_i2c_write")
+        .withMemoryBufferParameter("data", i2c_write_data, 2)
+        .withParameter("length", 2)
+        .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .ignoreOtherParameters();
+    if (cfg->i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        if (cfg->i2c_read_data != NULL) {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withOutputParameterReturning("data", cfg->i2c_read_data, cfg->i2c_data_len)
+                .withParameter("length", cfg->i2c_data_len)
+                .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .ignoreOtherParameters();
+        } else {
+            mock()
+                .expectOneCall("mock_sht3x_i2c_read")
+                .withParameter("length", cfg->i2c_data_len)
+                .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .ignoreOtherParameters();
+        }
+    }
+
+    uint16_t status_reg_val;
+    uint8_t rc =
+        sht3x_read_status_register(sht3x, cfg->verify_crc, cfg->complete_cb, cfg->complete_cb_user_data_expected);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc);
+    i2c_write_complete_cb(cfg->i2c_write_rc, i2c_write_complete_cb_user_data);
+    if (cfg->i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
+        timer_expired_cb(timer_expired_cb_user_data);
+        i2c_read_complete_cb(cfg->i2c_read_rc, i2c_read_complete_cb_user_data);
+    }
+
+    if (cfg->complete_cb) {
+        CHECK_EQUAL(1, read_status_reg_complete_cb_call_count);
+        CHECK_EQUAL(cfg->expected_complete_cb_rc, read_status_reg_complete_cb_result_code);
+        POINTERS_EQUAL(cfg->complete_cb_user_data_expected, read_status_reg_complete_cb_user_data);
+        if (cfg->status_reg_val_expected) {
+            CHECK_EQUAL(*(cfg->status_reg_val_expected), read_status_reg_complete_cb_reg_val);
+        }
+    }
+}
+
+TEST(SHT3X, ReadStatusRegI2cWriteAddressNack)
+{
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK,
+        /* Don't care */
+        .i2c_read_data = NULL,
+        .i2c_data_len = 0,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_NO,
+        /* Care */
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE0,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR,
+        .status_reg_val_expected = NULL,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegI2cWriteBusError)
+{
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_BUS_ERROR,
+        /* Don't care */
+        .i2c_read_data = NULL,
+        .i2c_data_len = 0,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_NO,
+        /* Care */
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE1,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR,
+        .status_reg_val_expected = NULL,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegI2cReadAddressNack)
+{
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = NULL,
+        .i2c_data_len = 2,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_ADDRESS_NACK,
+        .verify_crc = SHT3X_VERIFY_CRC_NO,
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE2,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR,
+        .status_reg_val_expected = NULL,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegI2cReadBusError)
+{
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = NULL,
+        .i2c_data_len = 3,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_BUS_ERROR,
+        .verify_crc = SHT3X_VERIFY_CRC_YES,
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE3,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_IO_ERR,
+        .status_reg_val_expected = NULL,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegNoCrc)
+{
+    uint8_t i2c_read_data[] = {0x80, 0x00};
+    uint16_t status_reg_val = 0x8000;
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 2,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_NO,
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE4,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_OK,
+        .status_reg_val_expected = &status_reg_val,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegWrongCrc)
+{
+    uint8_t i2c_read_data[] = {0x80, 0x03, 0x42};
+    uint16_t status_reg_val = 0x8003;
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 3,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_YES,
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE5,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_CRC_MISMATCH,
+        .status_reg_val_expected = &status_reg_val,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegCrc)
+{
+    uint8_t i2c_read_data[] = {0x80, 0x03, 0xF1};
+    uint16_t status_reg_val = 0x8003;
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 3,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_YES,
+        .complete_cb = sht3x_read_status_reg_complete_cb,
+        .complete_cb_user_data_expected = (void *)0xE6,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_OK,
+        .status_reg_val_expected = &status_reg_val,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegCompleteCbNull)
+{
+    uint8_t i2c_read_data[] = {0x80, 0x03, 0xF1};
+    uint16_t status_reg_val = 0x8003;
+    TestReadStatusRegCfg cfg = {
+        .i2c_write_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .i2c_read_data = i2c_read_data,
+        .i2c_data_len = 3,
+        .i2c_read_rc = SHT3X_I2C_RESULT_CODE_OK,
+        .verify_crc = SHT3X_VERIFY_CRC_YES,
+        .complete_cb = NULL,
+        .complete_cb_user_data_expected = NULL,
+        .expected_complete_cb_rc = SHT3X_RESULT_CODE_OK,
+        .status_reg_val_expected = &status_reg_val,
+    };
+    test_read_status_register(&cfg);
+}
+
+TEST(SHT3X, ReadStatusRegSelfNull)
+{
+    uint8_t rc_create = sht3x_create(&sht3x, &init_cfg);
+    CHECK_EQUAL(SHT3X_RESULT_CODE_OK, rc_create);
+
+    void *user_data = (void *)0xE7;
+    uint8_t rc = sht3x_read_status_register(NULL, SHT3X_VERIFY_CRC_NO, sht3x_read_status_reg_complete_cb, user_data);
+
+    CHECK_EQUAL(SHT3X_RESULT_CODE_INVALID_ARG, rc);
+    CHECK_EQUAL(0, read_status_reg_complete_cb_call_count);
 }

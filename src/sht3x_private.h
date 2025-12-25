@@ -36,6 +36,8 @@ struct SHT3XStruct {
     uint8_t sequence_type;
     /** Flags for the current sequence. */
     uint8_t sequence_flags;
+    /** Number of bytes to read out in the I2C read operation in the current sequence. */
+    uint8_t sequence_i2c_read_len;
     /**
      * @brief Timer period for measurement sequence.
      *

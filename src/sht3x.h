@@ -7,6 +7,7 @@ extern "C"
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "sht3x_defs.h"
 
@@ -132,6 +133,16 @@ typedef void (*SHT3XMeasCompleteCb)(uint8_t result_code, SHT3XMeasurement *meas,
  */
 typedef void (*SHT3XCompleteCb)(uint8_t result_code, void *user_data);
 
+/**
+ * @brief Callback type to execute when the driver finishes reading out status register.
+ *
+ * @param result_code Indicates success or the reason for failure.
+ * @param reg_val Status register value that was read out from the device. Undefined value if @p result_code is not
+ * SHT3X_RESULT_CODE_OK.
+ * @param user_data User data.
+ */
+typedef void (*SHT3XReadStatusRegCompleteCb)(uint8_t result_code, uint16_t reg_val, void *user_data);
+
 /** @brief Flag indicating that temperature measurement will be read. */
 #define SHT3X_FLAG_READ_TEMP (1U << 0)
 /** @brief Flag indicating that humidity measurement will be read. */
@@ -140,6 +151,10 @@ typedef void (*SHT3XCompleteCb)(uint8_t result_code, void *user_data);
 #define SHT3X_FLAG_VERIFY_CRC_TEMP (1U << 2)
 /** @brief Flag indicating that humidity measurement CRC will be validated. */
 #define SHT3X_FLAG_VERIFY_CRC_HUM (1U << 3)
+
+/* Macros for readability to pass to verify_crc parameter of sht3x_read_status_register */
+#define SHT3X_VERIFY_CRC_YES true
+#define SHT3X_VERIFY_CRC_NO false
 
 typedef enum {
     SHT3X_RESULT_CODE_OK = 0,
@@ -586,6 +601,37 @@ uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasComp
  * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
  */
 uint8_t sht3x_soft_reset_with_delay(SHT3X self, SHT3XCompleteCb cb, void *user_data);
+
+/**
+ * @brief Read status register.
+ *
+ * Steps:
+ * 1. Send read status register write command.
+ * 2. Wait for 1 ms - mandatory delay between subsequent I2C commands.
+ * 3. Send read command to read out the status register value. If @p verify_crc is @ref SHT3X_VERIFY_CRC_YES, also read
+ * out the status register CRC and verify it.
+ * 4. Call @p cb with the read out status register value as a parameter.
+ *
+ * Possible values of result_code parameter in @p cb and their meaning:
+ * - @ref SHT3X_RESULT_CODE_OK Successfully read out status register. The read out status register value is available in
+ * reg_val parameter of @p cb. If CRC verification was requested, it was successful.
+ * - @ref SHT3X_RESULT_CODE_CRC_MISMATCH The status register was read out successfully, but the CRC veridication failed.
+ * reg_val parameter in @p cb has undefined value.
+ * - @ref SHT3X_RESULT_CODE_IO_ERR Failed to read out status register due to I2C IO error. reg_val parameter in @p cb
+ * has undefined value.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param verify_crc Use @ref SHT3X_VERIFY_CRC_YES to read out status register CRC and verify it, use @ref
+ * SHT3X_VERIFY_CRC_NO to not read out status register CRC and not verify it.
+ * @param[in] cb Callback to execute once complete. Can be NULL if not needed. result_code parameter of this callback
+ * indicates success or reason for failure.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully initiated read status register sequence.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed to initiate sequence, there is currently another sequence in progress.
+ */
+uint8_t sht3x_read_status_register(SHT3X self, bool verify_crc, SHT3XReadStatusRegCompleteCb cb, void *user_data);
 
 /**
  * @brief Destroy a SHT3X instance.
