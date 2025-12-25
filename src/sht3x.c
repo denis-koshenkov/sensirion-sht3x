@@ -192,7 +192,7 @@ static bool is_valid_mps(uint8_t mps)
 /**
  * @brief Check whether @p flags is a valid combination of read flags.
  *
- * @param flags Flags combination.
+ * @param[in] flags Flags combination.
  *
  * @retval true Flags combination is valid.
  * @retval false Flags combination is invalid.
@@ -224,7 +224,7 @@ static uint16_t two_big_endian_bytes_to_uint16(const uint8_t *const bytes)
 /**
  * @brief Run SHT3X CRC algorithm on two bytes.
  *
- * @param data Two bytes at this address are used for CRC calculation.
+ * @param[in] data Two bytes at this address are used for CRC calculation.
 
  * @return uint8_t Resulting CRC.
  */
@@ -323,6 +323,17 @@ static uint8_t get_single_shot_meas_timer_period(uint8_t repeatability, uint8_t 
     return SHT3X_RESULT_CODE_OK;
 }
 
+/**
+ * @brief Get start periodic measurement command code.
+ *
+ * @param[in] repeatability Repeatability option. Use @ref SHT3XMeasRepeatability.
+ * @param[in] mps MPS option. Use @ref SHT3XMps.
+ * @param[out] cmd Resulting two-byte command is written here.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully got command code.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p cmd is NULL, @p repeatability option is invalid, or @p mps option is
+ * invalid.
+ */
 static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, uint8_t *const cmd)
 {
     if (!cmd) {
@@ -397,6 +408,17 @@ static uint8_t get_start_periodic_meas_cmd(uint8_t repeatability, uint8_t mps, u
     return SHT3X_RESULT_CODE_OK;
 }
 
+/**
+ * @brief Get single shot measurement command code.
+ *
+ * @param[in] repeatability Repeatability option. Use @ref SHT3XMeasRepeatability.
+ * @param[in] clock_stretching Clock stretching option. Use @ref SHT3XClockStretching.
+ * @param[out] cmd Resulting two-byte command is written here.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully got command code.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p cmd is NULL, @p repeatability option is invalid, or @p clock_stretching
+ * option is invalid.
+ */
 static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t clock_stretching, uint8_t *const cmd)
 {
     if (!cmd) {
@@ -437,7 +459,7 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
 /**
  * @brief Map read measurement flags to number of bytes to read from the device.
  *
- * @param flags Flags.
+ * @param[in] flags Flags.
  *
  * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
  */
