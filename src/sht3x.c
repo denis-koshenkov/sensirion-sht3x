@@ -187,6 +187,26 @@ static bool is_valid_mps(uint8_t mps)
 }
 
 /**
+ * @brief Check whether @p flags is a valid combination of read flags.
+ *
+ * @param flags Flags combination.
+ *
+ * @retval true Flags combination is valid.
+ * @retval false Flags combination is invalid.
+ */
+static bool read_flags_valid(uint8_t flags)
+{
+    // clang-format off
+    bool flags_invalid = (
+        (!(flags & SHT3X_FLAG_READ_TEMP) && !(flags & SHT3X_FLAG_READ_HUM))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP))
+        || ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM))
+    );
+    // clang-format on
+    return !flags_invalid;
+}
+
+/**
  * @brief Convert two bytes in big endian to an integer of type uint16_t.
  *
  * @param[in] bytes The two bytes at this address are used for conversion.
@@ -412,6 +432,43 @@ static uint8_t get_single_shot_meas_command_code(uint8_t repeatability, uint8_t 
 }
 
 /**
+ * @brief Map read measurement flags to number of bytes to read from the device.
+ *
+ * @param flags Flags.
+ *
+ * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
+ */
+static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
+{
+    size_t num_bytes = 0;
+    if (flags == 0) {
+        /* We should be reading at least either temperature or humidity */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
+        /* Cannot verify temperature CRC if we are not reading temperature */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
+        /* Cannot verify humidity CRC if we are not reading humidity */
+        num_bytes = 0;
+    } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
+        num_bytes = 6;
+    } else if (flags & SHT3X_FLAG_READ_HUM) {
+        /* Last byte is humidity CRC, omit it since we are not verifying humidity CRC */
+        num_bytes = 5;
+    } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
+        /* Last three bytes are humidity meas and its crc, no need to read them out */
+        num_bytes = 3;
+    } else if (flags & SHT3X_FLAG_READ_TEMP) {
+        /* Third byte is temperature CRC, omit it since we are not verifying temperature CRC */
+        num_bytes = 2;
+    } else {
+        // Invalid flag combination
+        num_bytes = 0;
+    }
+    return num_bytes;
+}
+
+/**
  * @brief Thin wrapper around i2c_write for sending fetch data command.
  *
  * @param[in] self SHT3X instance.
@@ -632,63 +689,6 @@ static void generic_i2c_complete_cb(uint8_t result_code, void *user_data)
 
     uint8_t rc = (result_code == SHT3X_I2C_RESULT_CODE_OK) ? SHT3X_RESULT_CODE_OK : SHT3X_RESULT_CODE_IO_ERR;
     execute_complete_cb(self, rc);
-}
-
-/**
- * @brief Check whether @p flags is a valid combination of read flags.
- *
- * @param flags Flags combination.
- *
- * @retval true Flags combination is valid.
- * @retval false Flags combination is invalid.
- */
-static bool read_flags_valid(uint8_t flags)
-{
-    // clang-format off
-    bool flags_invalid = (
-        (!(flags & SHT3X_FLAG_READ_TEMP) && !(flags & SHT3X_FLAG_READ_HUM))
-        || ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP))
-        || ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM))
-    );
-    // clang-format on
-    return !flags_invalid;
-}
-
-/**
- * @brief Map read measurement flags to number of bytes to read from the device.
- *
- * @param flags Flags.
- *
- * @return size_t Number of bytes to read, or 0 if flag combination is invalid.
- */
-static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
-{
-    size_t num_bytes = 0;
-    if (flags == 0) {
-        /* We should be reading at least either temperature or humidity */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_TEMP) && !(flags & SHT3X_FLAG_READ_TEMP)) {
-        /* Cannot verify temperature CRC if we are not reading temperature */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_VERIFY_CRC_HUM) && !(flags & SHT3X_FLAG_READ_HUM)) {
-        /* Cannot verify humidity CRC if we are not reading humidity */
-        num_bytes = 0;
-    } else if ((flags & SHT3X_FLAG_READ_HUM) && (flags & SHT3X_FLAG_VERIFY_CRC_HUM)) {
-        num_bytes = 6;
-    } else if (flags & SHT3X_FLAG_READ_HUM) {
-        /* Last byte is humidity CRC, omit it since we are not verifying humidity CRC */
-        num_bytes = 5;
-    } else if ((flags & SHT3X_FLAG_READ_TEMP) && (flags & SHT3X_FLAG_VERIFY_CRC_TEMP)) {
-        /* Last three bytes are humidity meas and its crc, no need to read them out */
-        num_bytes = 3;
-    } else if (flags & SHT3X_FLAG_READ_TEMP) {
-        /* Third byte is temperature CRC, omit it since we are not verifying temperature CRC */
-        num_bytes = 2;
-    } else {
-        // Invalid flag combination
-        num_bytes = 0;
-    }
-    return num_bytes;
 }
 
 static void meas_i2c_complete_cb(uint8_t result_code, void *user_data)
