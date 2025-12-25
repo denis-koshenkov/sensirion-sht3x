@@ -13,6 +13,44 @@ extern "C"
 typedef struct SHT3XStruct *SHT3X;
 
 /**
+ * @brief SHT3X device driver.
+ *
+ * # Single Shot Measurements
+ * The easiest way to perform and read out a single shot measurement is by calling @ref
+ * sht3x_read_single_shot_measurement. This function performs all the necessary steps for initiating and reading out the
+ * measurement.
+ *
+ * # Periodic measurements
+ * 1. Start periodic measurements by calling @ref sht3x_start_periodic_measurement or @ref
+ * sht3x_start_periodic_measurement_art.
+ * 2. Periodically call @ref sht3x_read_periodic_measurement to read out the measurements.
+ * 3. Call @ref sht3x_stop_periodic_measurement to stop periodic measurements. After this, single shot measurements can
+ * be performed again.
+ *
+ * # Soft Reset
+ * Device can be reset via a soft reset command. After the device receives the command, it takes up to 1.5 ms to perform
+ * the reset until it is able to process I2C commands again.
+ *
+ * It is recommended to do soft reset by calling @ref sht3x_soft_reset_with_delay. This function executes its complete
+ * callback after 2 ms (rounded up from 1.5 ms) from the moment the device receives the soft reset command.
+ *
+ * This ensures that the caller can immediately start communicating with the device after that callback is executed.
+ *
+ * On the contrary, if soft reset is performed by calling @ref sht3x_soft_reset, it is the caller's responsibility to
+ * wait until the device becomes responsive after the reset.
+ *
+ * # Mandatory delay between commands
+ * The SHT3X device has a mandatory delay of at least 1 ms between I2C commands that it receives.
+ *
+ * Some driver functions perform several I2C transactions before they execute the complete callback. This delay is
+ * always maintained between those transactions.
+ *
+ * However, this driver does not guarantee this delay when two different driver functions are invoked after each other.
+ * It is the caller's responsibility to ensure that there is a delay of at least 1 ms between calls to functions of this
+ * driver.
+ */
+
+/**
  * @brief Gets called in @ref sht3x_create to get memory for a SHT3X instance.
  *
  * The implementation of this function should return a pointer to memory of size sizeof(struct SHT3XStruct). All private
@@ -427,9 +465,98 @@ uint8_t sht3x_send_read_status_register_cmd(SHT3X self, SHT3XCompleteCb cb, void
  */
 uint8_t sht3x_clear_status_register(SHT3X self, SHT3XCompleteCb cb, void *user_data);
 
+/**
+ * @brief Perform a single shot measurement and read the result.
+ *
+ * Performs the following steps:
+ * 1. Send a single shot measurement command with the specified @p repeatability and @p clock_stretching options.
+ * 2. Wait for a duration that is defined by @p repeatability and @p clock_stretching options. See below for details.
+ * 3. Read out the measurements according to @p flags.
+ * 4. Invoke @p cb with the read out measurements as a parameter.
+ *
+ * Duration of delay in step 2:
+ * - Any repeatability option and clock stretching enabled: 1 ms
+ * - High repeatability option and clock stretching disabled: 16 ms
+ * - Medium repeatability option and clock stretching disabled: 7 ms
+ * - Low repeatability option and clock stretching disabled: 5 ms
+ *
+ * When clock stretching is enabled, it is assumed that the caller wants to initiate the I2C read transaction as soon as
+ * possible after sending a single shot measurement command. The 1 ms delay is a mandatory minimum delay between two I2C
+ * transactions.
+ *
+ * When clock stretching is disabled, the delay is the maximum time it takes for the measurement to be ready. This
+ * guarantees that when we send the I2C read transaction, the measurements are ready for readout. The values for
+ * different repeatability options are taken from the datasheet and rounded up to whole ms.
+ *
+ * See @ref sht3x_read_measurement for the description of available flags.
+ *
+ * Calling this function is equivalent to:
+ * 1. Calling @ref sht3x_send_single_shot_measurement_cmd with @p repeatability and @p clock_stretching.
+ * 2. Waiting for the delay based on repeatability and clock stretching options.
+ * 3. Calling @ref sht3x_read_measurement with @p flags.
+ *
+ * This function provides an easy way to fully perform a single shot measurement in one function.
+ *
+ * See @ref sht3x_read_measurement for the description possible values of result_code parameter in @p cb and their
+ * meaning.
+ *
+ * @note It is only allowed to access meas parameter in @p cb if result_code parameter in @p cb is @ref
+ * SHT3X_RESULT_CODE_OK. In all other cases, that pointer should not be dereferenced.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] repeatability Repeatability option, use @ref SHT3XMeasRepeatability.
+ * @param[in] clock_stretching Clock stretching option, use @ref SHT3XClockStretching.
+ * @param[in] flags Read measurement options.
+ * @param[in] cb Callback to execute once the command is complete. Can be NULL if not needed.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully triggered single shot measurement. Note that this does not mean that
+ * measurement readout was successful - this is indicated by the result_code parameter of @p cb.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, @p repeatability option is invalid, @p clock_stretching option
+ * is invalid, or combination of @p flags is invalid.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
+ * @retval SHT3X_RESULT_CODE_DRIVER_ERR Something went wrong in this driver code.
+ */
 uint8_t sht3x_read_single_shot_measurement(SHT3X self, uint8_t repeatability, uint8_t clock_stretching, uint8_t flags,
                                            SHT3XMeasCompleteCb cb, void *user_data);
 
+/**
+ * @brief Read out a periodic measurements.
+ *
+ * @pre Periodic measurements have been started by calling @ref sht3x_start_periodic_measurement or @ref
+ * sht3x_start_periodic_measurement_art.
+ *
+ * Steps:
+ * 1. Send fetch periodic data measurement command.
+ * 2. Wait for 1 ms - mandatory delay between sending two I2C commands.
+ * 3. Read out the measurements according to @p flags.
+ * 4. Invoke @p cb with the read out measurements as a parameter.
+ *
+ * Calling this function is equivalent to:
+ * 1. Calling @ref sht3x_fetch_periodic_measurement_data with.
+ * 2. Waiting for 1 ms.
+ * 3. Calling @ref sht3x_read_measurement with @p flags.
+ *
+ * See @ref sht3x_read_measurement for the description of available flags.
+ *
+ * This function provides an easy way to read out a periodic measurement in one function.
+ *
+ * See @ref sht3x_read_measurement for the description possible values of result_code parameter in @p cb and their
+ * meaning.
+ *
+ * @note It is only allowed to access meas parameter in @p cb if result_code parameter in @p cb is @ref
+ * SHT3X_RESULT_CODE_OK. In all other cases, that pointer should not be dereferenced.
+ *
+ * @param[in] self Instance created by @ref sht3x_create.
+ * @param[in] flags Read measurement options.
+ * @param[in] cb Callback to execute once the command is complete. Can be NULL if not needed.
+ * @param[in] user_data User data to pass to @p cb.
+ *
+ * @retval SHT3X_RESULT_CODE_OK Successfully triggered reading a periodic measurement. Note that this does not mean that
+ * measurement readout was successful - this is indicated by the result_code parameter of @p cb.
+ * @retval SHT3X_RESULT_CODE_INVALID_ARG @p self is NULL, or combination of @p flags is invalid.
+ * @retval SHT3X_RESULT_CODE_BUSY Failed, there is currently another sequence in progress.
+ */
 uint8_t sht3x_read_periodic_measurement(SHT3X self, uint8_t flags, SHT3XMeasCompleteCb cb, void *user_data);
 
 /**
