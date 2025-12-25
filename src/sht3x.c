@@ -91,6 +91,8 @@ typedef enum {
     SHT3X_SEQUENCE_TYPE_READ_MEAS,
     SHT3X_SEQUENCE_TYPE_SINGLE_SHOT_MEAS,
     SHT3X_SEQUENCE_TYPE_READ_PERIODIC_MEAS,
+    /** There is currently no ongoing sequence. */
+    SHT3X_SEQUENCE_TYPE_NO_SEQ,
 } SHT3xSequenceType;
 
 /**
@@ -469,6 +471,21 @@ static size_t map_read_meas_flags_to_num_bytes_to_read(uint8_t flags)
 }
 
 /**
+ * @brief Resets all sequence-related data and marks that there is currently no ongoing sequence.
+ *
+ * @param[in] self SHT3X instance.
+ */
+static void reset_sequence_data(SHT3X self)
+{
+    self->sequence_cb = NULL;
+    self->sequence_cb_user_data = NULL;
+    /* No ongoing sequence */
+    self->sequence_type = SHT3X_SEQUENCE_TYPE_NO_SEQ;
+    self->sequence_flags = 0;
+    self->sequence_timer_period = 0;
+}
+
+/**
  * @brief Thin wrapper around i2c_write for sending fetch data command.
  *
  * @param[in] self SHT3X instance.
@@ -827,6 +844,7 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     (*instance)->i2c_read = cfg->i2c_read;
     (*instance)->start_timer = cfg->start_timer;
     (*instance)->i2c_addr = cfg->i2c_addr;
+    reset_sequence_data(*instance);
 
     return SHT3X_RESULT_CODE_OK;
 }
