@@ -9,6 +9,11 @@
 /* To return from mock_sht3x_get_instance_memory */
 static struct SHT3XStruct instance_memory;
 
+/* User data parameters to pass to sht3x_create in the init cfg */
+static void *i2c_write_user_data = (void *)0x12;
+static void *i2c_read_user_data = (void *)0x34;
+static void *start_timer_user_data = (void *)0x56;
+
 /* These tests are in a separate test group, because they test sht3x_create, including unhappy scenarios. In the
  * other test group, expected call to mock_sht3x_get_instance_memory is set in the common setup function before each
  * test. mock_sht3x_get_instance_memory only gets called from sht3x_create in the happy scenario. In order to test
@@ -34,6 +39,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfGetInstMemoryIsNull)
         .get_instance_memory = NULL,
         .get_instance_memory_user_data = (void *)0x1,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
+        .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
+        .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -55,8 +65,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgIfInstanceIsNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = (void *)0x1,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(NULL, &cfg);
@@ -71,8 +84,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgInvalidI2cAddr)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = NULL,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x46, /* Only 0x44 and 0x45 are valid addresses */
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -87,8 +103,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgI2cWriteNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = NULL,
         .i2c_write = NULL,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x45,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -103,8 +122,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgI2cReadNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = NULL,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = NULL,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -119,8 +141,11 @@ TEST(SHT3XNoSetup, CreateReturnsInvalidArgStartTimerNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = NULL,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = NULL,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x45,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -141,8 +166,11 @@ TEST(SHT3XNoSetup, CreateReturnsOutOfMemoryIfGetInstanceMemoryReturnsNull)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = user_data,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -163,8 +191,11 @@ TEST(SHT3XNoSetup, CreateCallsGetInstanceMemory)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = get_instance_memory_user_data,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x44,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
@@ -184,8 +215,11 @@ TEST(SHT3XNoSetup, CreateSucceedsWithI2cAddr0x45)
         .get_instance_memory = mock_sht3x_get_instance_memory,
         .get_instance_memory_user_data = NULL,
         .i2c_write = mock_sht3x_i2c_write,
+        .i2c_write_user_data = i2c_write_user_data,
         .i2c_read = mock_sht3x_i2c_read,
+        .i2c_read_user_data = i2c_read_user_data,
         .start_timer = mock_sht3x_start_timer,
+        .start_timer_user_data = start_timer_user_data,
         .i2c_addr = 0x45,
     };
     uint8_t rc = sht3x_create(&sht3x, &cfg);
