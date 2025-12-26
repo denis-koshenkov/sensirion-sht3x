@@ -912,7 +912,7 @@ static void read_meas_seq_part_2(uint8_t result_code, void *user_data)
         return;
     }
 
-    self->start_timer(self->sequence_timer_period, read_meas_seq_part_3, (void *)self);
+    self->start_timer(self->sequence_timer_period, self->start_timer_user_data, read_meas_seq_part_3, (void *)self);
 }
 
 static void soft_reset_with_delay_part_3(void *user_data)
@@ -938,7 +938,8 @@ static void soft_reset_with_delay_part_2(uint8_t result_code, void *user_data)
     }
 
     /* Give sensor time to perform soft reset */
-    self->start_timer(SHT3X_SOFT_RESET_DELAY_MS, soft_reset_with_delay_part_3, (void *)self);
+    self->start_timer(SHT3X_SOFT_RESET_DELAY_MS, self->start_timer_user_data, soft_reset_with_delay_part_3,
+                      (void *)self);
 }
 
 static void read_status_reg_part_4(uint8_t result_code, void *user_data)
@@ -992,7 +993,8 @@ static void read_status_reg_part_2(uint8_t result_code, void *user_data)
     }
 
     /* Mandatory 1 ms delay between two I2C commands */
-    self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, read_status_reg_part_3, (void *)self);
+    self->start_timer(SHT3X_MIN_DELAY_BETWEEN_TWO_I2C_CMDS_MS, self->start_timer_user_data, read_status_reg_part_3,
+                      (void *)self);
 }
 
 uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
@@ -1012,6 +1014,7 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     (*instance)->i2c_read = cfg->i2c_read;
     (*instance)->i2c_read_user_data = cfg->i2c_read_user_data;
     (*instance)->start_timer = cfg->start_timer;
+    (*instance)->start_timer_user_data = cfg->start_timer_user_data;
     (*instance)->i2c_addr = cfg->i2c_addr;
     reset_sequence_data(*instance);
 

@@ -53,16 +53,17 @@ void mock_sht3x_i2c_read(uint8_t *data, size_t length, uint8_t i2c_addr, void *u
         .withParameter("cb_user_data", cb_user_data);
 }
 
-void mock_sht3x_start_timer(uint32_t duration_ms, SHT3XTimerExpiredCb cb, void *user_data)
+void mock_sht3x_start_timer(uint32_t duration_ms, void *user_data, SHT3XTimerExpiredCb cb, void *cb_user_data)
 {
     SHT3XTimerExpiredCb *cb_p = (SHT3XTimerExpiredCb *)mock().getData("timerExpiredCb").getPointerValue();
-    void **user_data_p = (void **)mock().getData("timerExpiredCbUserData").getPointerValue();
+    void **cb_user_data_p = (void **)mock().getData("timerExpiredCbUserData").getPointerValue();
     *cb_p = cb;
-    *user_data_p = user_data;
+    *cb_user_data_p = cb_user_data;
 
     mock()
         .actualCall("mock_sht3x_start_timer")
         .withParameter("duration_ms", duration_ms)
+        .withParameter("user_data", user_data)
         .withParameter("cb", cb)
-        .withParameter("user_data", user_data);
+        .withParameter("cb_user_data", cb_user_data);
 }

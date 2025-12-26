@@ -92,10 +92,12 @@ typedef void (*SHT3X_I2CRead)(uint8_t *data, size_t length, uint8_t i2c_addr, vo
  * @p cb must be executed from the same execution context as all other driver functions are called from.
  *
  * @param[in] duration_ms @p cb must be called after at least this number of ms pass.
+ * @param[in] user_data This parameter will be equal to start_timer_user_data from the init config passed to @ref
+ * sht3x_create.
  * @param[in] cb Callback to execute.
- * @param[in] user_data User data to pass to the callback.
+ * @param[in] cb_ser_data User data to pass to the @p cb callback.
  */
-typedef void (*SHT3XStartTimer)(uint32_t duration_ms, SHT3XTimerExpiredCb cb, void *user_data);
+typedef void (*SHT3XStartTimer)(uint32_t duration_ms, void *user_data, SHT3XTimerExpiredCb cb, void *cb_user_data);
 
 #ifdef __cplusplus
 }

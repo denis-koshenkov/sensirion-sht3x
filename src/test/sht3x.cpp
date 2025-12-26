@@ -11,9 +11,10 @@
 #define SHT3X_TEST_DEFAULT_I2C_ADDR 0x44
 #define SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD 0.01
 
-/* User data that i2c_write/i2c_read should be invoked with. Passed to SHT3X instance in the init config. */
+/* User data that user-defined should be invoked with. Passed to SHT3X instance in the init config. */
 static void *i2c_write_user_data = (void *)0x42;
 static void *i2c_read_user_data = (void *)0xF5;
+static void *start_timer_user_data = (void *)0x67;
 
 /* To return from mock_sht3x_get_instance_memory */
 static struct SHT3XStruct instance_memory;
@@ -134,6 +135,7 @@ TEST_GROUP(SHT3X)
         init_cfg.i2c_read = mock_sht3x_i2c_read;
         init_cfg.i2c_read_user_data = i2c_read_user_data;
         init_cfg.start_timer = mock_sht3x_start_timer;
+        init_cfg.start_timer_user_data = start_timer_user_data;
         init_cfg.i2c_addr = SHT3X_TEST_DEFAULT_I2C_ADDR;
     }
 };
@@ -202,6 +204,7 @@ static void test_read_single_shot_measurement(const ReadSingleShotMeasTestCfg *c
         mock()
             .expectOneCall("mock_sht3x_start_timer")
             .withParameter("duration_ms", cfg->timer_period)
+            .withParameter("user_data", start_timer_user_data)
             .ignoreOtherParameters();
         if (cfg->i2c_read_data != NULL) {
             mock()
@@ -2422,7 +2425,11 @@ static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, 
         .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
-        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", 1)
+            .withParameter("user_data", start_timer_user_data)
+            .ignoreOtherParameters();
         if (i2c_read_data != NULL) {
             mock()
                 .expectOneCall("mock_sht3x_i2c_read")
@@ -2910,7 +2917,11 @@ static void test_soft_reset_with_delay(uint8_t i2c_write_rc, uint8_t expected_rc
         .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
-        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", 2)
+            .withParameter("user_data", start_timer_user_data)
+            .ignoreOtherParameters();
     }
 
     uint8_t rc = sht3x_soft_reset_with_delay(sht3x, complete_cb, complete_cb_user_data_expected);
@@ -3342,7 +3353,11 @@ static void test_write_read_seq_cannot_be_interrupted(SHT3XFunction start_seq, u
         .ignoreOtherParameters();
     size_t i2c_data_len = 2;
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
-        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", 1)
+            .withParameter("user_data", start_timer_user_data)
+            .ignoreOtherParameters();
         mock()
             .expectOneCall("mock_sht3x_i2c_read")
             .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
@@ -3485,7 +3500,11 @@ static void test_soft_reset_with_delay_cannot_be_interrupted(uint8_t i2c_write_r
         .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
-        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", 2)
+            .withParameter("user_data", start_timer_user_data)
+            .ignoreOtherParameters();
     }
     /* Clear status register command */
     uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
@@ -3555,7 +3574,11 @@ static void test_read_status_register(const TestReadStatusRegCfg *const cfg)
         .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (cfg->i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
-        mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
+        mock()
+            .expectOneCall("mock_sht3x_start_timer")
+            .withParameter("duration_ms", 1)
+            .withParameter("user_data", start_timer_user_data)
+            .ignoreOtherParameters();
         if (cfg->i2c_read_data != NULL) {
             mock()
                 .expectOneCall("mock_sht3x_i2c_read")

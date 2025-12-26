@@ -199,6 +199,8 @@ typedef struct {
     /** User data to pass to i2c_read function. */
     void *i2c_read_user_data;
     SHT3XStartTimer start_timer;
+    /** User data to pass to start_timer function. */
+    void *start_timer_user_data;
     /** Can be only 0x44 or 0x45 according to the datasheet. */
     uint8_t i2c_addr;
 } SHT3XInitConfig;
