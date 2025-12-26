@@ -56,12 +56,14 @@ typedef void (*SHT3XTimerExpiredCb)(void *user_data);
  * @param[in] data Data to write to the device.
  * @param[in] length Number of bytes in the @p data array.
  * @param[in] i2c_addr I2C address of the SHT3X device.
+ * @param[in] user_data When this function is called, this parameter will be equal to i2c_write_user_data from the init
+ * config passed to @ref sht3x_create.
  * @param[in] cb Callback to execute once the I2C transaction is complete. This callback must be executed from the
  * same context that the SHT3X driver API functions get called from.
- * @param[in] user_data User data to pass to @p cb.
+ * @param[in] cb_user_data User data to pass to @p cb.
  */
-typedef void (*SHT3X_I2CWrite)(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
-                               void *user_data);
+typedef void (*SHT3X_I2CWrite)(uint8_t *data, size_t length, uint8_t i2c_addr, void *user_data,
+                               SHT3X_I2CTransactionCompleteCb cb, void *cb_user_data);
 
 /**
  * @brief Perform a I2C read transaction to the SHT3X device.
@@ -70,12 +72,14 @@ typedef void (*SHT3X_I2CWrite)(uint8_t *data, size_t length, uint8_t i2c_addr, S
  * successful if the result_code parameter of @p cb is equal to SHT3X_I2C_RESULT_CODE_OK.
  * @param[in] length Number of bytes in the @p data array.
  * @param[in] i2c_addr I2C address of the SHT3X device.
+ * @param[in] user_data When this function is called, this parameter will be equal to i2c_read_user_data from the init
+ * config passed to @ref sht3x_create.
  * @param[in] cb Callback to execute once the I2C transaction is complete. This callback must be executed from the
  * same context that the SHT3X driver API functions get called from.
- * @param[in] user_data User data to pass to @p cb.
+ * @param[in] cb_user_data User data to pass to @p cb.
  */
-typedef void (*SHT3X_I2CRead)(uint8_t *data, size_t length, uint8_t i2c_addr, SHT3X_I2CTransactionCompleteCb cb,
-                              void *user_data);
+typedef void (*SHT3X_I2CRead)(uint8_t *data, size_t length, uint8_t i2c_addr, void *user_data,
+                              SHT3X_I2CTransactionCompleteCb cb, void *cb_user_data);
 
 /**
  * @brief Execute @p cb after @p duration_ms ms pass.

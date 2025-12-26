@@ -11,6 +11,10 @@
 #define SHT3X_TEST_DEFAULT_I2C_ADDR 0x44
 #define SHT3X_TEST_DOUBLES_EQUAL_THRESHOLD 0.01
 
+/* User data that i2c_write/i2c_read should be invoked with. Passed to SHT3X instance in the init config. */
+static void *i2c_write_user_data = (void *)0x42;
+static void *i2c_read_user_data = (void *)0xF5;
+
 /* To return from mock_sht3x_get_instance_memory */
 static struct SHT3XStruct instance_memory;
 
@@ -126,7 +130,9 @@ TEST_GROUP(SHT3X)
         init_cfg.get_instance_memory = mock_sht3x_get_instance_memory;
         init_cfg.get_instance_memory_user_data = NULL;
         init_cfg.i2c_write = mock_sht3x_i2c_write;
+        init_cfg.i2c_write_user_data = i2c_write_user_data;
         init_cfg.i2c_read = mock_sht3x_i2c_read;
+        init_cfg.i2c_read_user_data = i2c_read_user_data;
         init_cfg.start_timer = mock_sht3x_start_timer;
         init_cfg.i2c_addr = SHT3X_TEST_DEFAULT_I2C_ADDR;
     }
@@ -190,6 +196,7 @@ static void test_read_single_shot_measurement(const ReadSingleShotMeasTestCfg *c
         .withMemoryBufferParameter("data", cfg->i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", cfg->i2c_addr)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (cfg->i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock()
@@ -202,12 +209,14 @@ static void test_read_single_shot_measurement(const ReadSingleShotMeasTestCfg *c
                 .withOutputParameterReturning("data", cfg->i2c_read_data, cfg->i2c_data_len)
                 .withParameter("length", cfg->i2c_data_len)
                 .withParameter("i2c_addr", cfg->i2c_addr)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         } else {
             mock()
                 .expectOneCall("mock_sht3x_i2c_read")
                 .withParameter("length", cfg->i2c_data_len)
                 .withParameter("i2c_addr", cfg->i2c_addr)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         }
     }
@@ -1146,6 +1155,7 @@ TEST(SHT3X, SingleShotMeasCmdHighRepeatabilityAddressNack)
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     void *complete_cb_user_data_expected = (void *)0x37;
@@ -1173,6 +1183,7 @@ TEST(SHT3X, SingleShotMeasCmdHighRepeatabilityBusError)
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     void *complete_cb_user_data_expected = (void *)0x37;
@@ -1200,6 +1211,7 @@ TEST(SHT3X, SingleShotMeasCmdNoCb)
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, SHT3X_MEAS_REPEATABILITY_HIGH,
@@ -1222,6 +1234,7 @@ static void test_single_shot_meas_cmd_success(uint8_t repeatability, uint8_t clo
         .withMemoryBufferParameter("data", expected_i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_send_single_shot_measurement_cmd(sht3x, repeatability, clock_stretching, sht3x_complete_cb,
@@ -1343,6 +1356,7 @@ TEST(SHT3X, ReadMeasTempAndHumNoCrc)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x8A;
@@ -1369,6 +1383,7 @@ TEST(SHT3X, ReadMeasAddressNack)
         .expectOneCall("mock_sht3x_i2c_read")
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xA1;
@@ -1392,6 +1407,7 @@ TEST(SHT3X, ReadMeasBusError)
         .expectOneCall("mock_sht3x_i2c_read")
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x18;
@@ -1417,6 +1433,7 @@ TEST(SHT3X, ReadMeasCbNull)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP | SHT3X_FLAG_READ_HUM, NULL, NULL);
@@ -1438,6 +1455,7 @@ TEST(SHT3X, ReadMeasTemp)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xDA;
@@ -1464,6 +1482,7 @@ TEST(SHT3X, ReadMeasHum)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xAD;
@@ -1521,6 +1540,7 @@ TEST(SHT3X, ReadMeasHumCrcHum)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 6)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x24;
@@ -1546,6 +1566,7 @@ static void test_read_meas_wrong_crc(uint8_t *i2c_read_data, size_t length, uint
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", length)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_read_measurement(sht3x, flags, sht3x_meas_complete_cb, meas_complete_cb_user_data_expected);
@@ -1594,6 +1615,7 @@ TEST(SHT3X, ReadMeasTempCrcTemp)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 3)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0x99;
@@ -1634,6 +1656,7 @@ TEST(SHT3X, ReadMeasTempHumCrcHum)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 6)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xCC;
@@ -1670,6 +1693,7 @@ TEST(SHT3X, ReadMeasTempHumCrcTemp)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 5)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xDD;
@@ -1706,6 +1730,7 @@ TEST(SHT3X, ReadMeasTempHumCrcTempCrcHum)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 6)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
 
     void *meas_complete_cb_user_data_expected = (void *)0xDE;
@@ -1781,6 +1806,7 @@ static void test_start_periodic_meas(uint8_t i2c_write_rc, uint8_t expected_rc, 
         .withMemoryBufferParameter("data", expected_i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc =
@@ -1987,6 +2013,7 @@ static void test_start_periodic_meas_art(uint8_t i2c_write_rc, uint8_t expected_
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_start_periodic_measurement_art(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2042,6 +2069,7 @@ static void test_stop_periodic_meas(uint8_t i2c_write_rc, uint8_t expected_rc, v
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_stop_periodic_measurement(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2096,6 +2124,7 @@ static void test_soft_reset(uint8_t i2c_write_rc, uint8_t expected_rc, void *com
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_soft_reset(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2149,6 +2178,7 @@ static void test_enable_heater(uint8_t i2c_write_rc, uint8_t expected_rc, void *
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_enable_heater(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2202,6 +2232,7 @@ static void test_disable_heater(uint8_t i2c_write_rc, uint8_t expected_rc, void 
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_disable_heater(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2255,6 +2286,7 @@ static void test_clear_status_register(uint8_t i2c_write_rc, uint8_t expected_rc
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_clear_status_register(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2311,6 +2343,7 @@ static void test_fetch_periodic_measurement_data(uint8_t i2c_write_rc, uint8_t e
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_fetch_periodic_measurement_data(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2386,6 +2419,7 @@ static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, 
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
@@ -2395,12 +2429,14 @@ static void test_read_periodic_measurement(uint8_t flags, uint8_t i2c_write_rc, 
                 .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
                 .withParameter("length", i2c_data_len)
                 .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         } else {
             mock()
                 .expectOneCall("mock_sht3x_i2c_read")
                 .withParameter("length", i2c_data_len)
                 .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         }
     }
@@ -2814,6 +2850,7 @@ static void test_send_read_status_register_cmd(uint8_t i2c_write_rc, uint8_t exp
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_send_read_status_register_cmd(sht3x, sht3x_complete_cb, complete_cb_user_data_expected);
@@ -2870,6 +2907,7 @@ static void test_soft_reset_with_delay(uint8_t i2c_write_rc, uint8_t expected_rc
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
@@ -2950,6 +2988,7 @@ static void test_busy_if_seq_in_progress(SHT3XFunction function)
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc_enable_heater = sht3x_enable_heater(sht3x, NULL, NULL);
@@ -3151,6 +3190,7 @@ static void test_i2c_write_seq_cannot_be_interrupted(uint8_t *i2c_write_data, ui
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     /* Clear status register command */
     uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
@@ -3159,6 +3199,7 @@ static void test_i2c_write_seq_cannot_be_interrupted(uint8_t *i2c_write_data, ui
         .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = start_seq();
@@ -3193,6 +3234,7 @@ TEST(SHT3X, ReadMeasurementCannotBeInterrupted)
         .withOutputParameterReturning("data", i2c_read_data, sizeof(i2c_read_data))
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_read_user_data)
         .ignoreOtherParameters();
     /* Clear status register command */
     uint8_t i2c_write_data_clear_status_reg[] = {0x30, 0x41};
@@ -3201,6 +3243,7 @@ TEST(SHT3X, ReadMeasurementCannotBeInterrupted)
         .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_read_measurement(sht3x, SHT3X_FLAG_READ_TEMP, sht3x_meas_complete_cb, NULL);
@@ -3295,6 +3338,7 @@ static void test_write_read_seq_cannot_be_interrupted(SHT3XFunction start_seq, u
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     size_t i2c_data_len = 2;
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
@@ -3304,6 +3348,7 @@ static void test_write_read_seq_cannot_be_interrupted(SHT3XFunction start_seq, u
             .withOutputParameterReturning("data", i2c_read_data, i2c_data_len)
             .withParameter("length", i2c_data_len)
             .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+            .withParameter("user_data", i2c_read_user_data)
             .ignoreOtherParameters();
     }
     /* Clear status register command */
@@ -3313,6 +3358,7 @@ static void test_write_read_seq_cannot_be_interrupted(SHT3XFunction start_seq, u
         .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = start_seq();
@@ -3436,6 +3482,7 @@ static void test_soft_reset_with_delay_cannot_be_interrupted(uint8_t i2c_write_r
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 2).ignoreOtherParameters();
@@ -3447,6 +3494,7 @@ static void test_soft_reset_with_delay_cannot_be_interrupted(uint8_t i2c_write_r
         .withMemoryBufferParameter("data", i2c_write_data_clear_status_reg, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
 
     uint8_t rc = sht3x_soft_reset_with_delay(sht3x, sht3x_complete_cb, NULL);
@@ -3504,6 +3552,7 @@ static void test_read_status_register(const TestReadStatusRegCfg *const cfg)
         .withMemoryBufferParameter("data", i2c_write_data, 2)
         .withParameter("length", 2)
         .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+        .withParameter("user_data", i2c_write_user_data)
         .ignoreOtherParameters();
     if (cfg->i2c_write_rc == SHT3X_I2C_RESULT_CODE_OK) {
         mock().expectOneCall("mock_sht3x_start_timer").withParameter("duration_ms", 1).ignoreOtherParameters();
@@ -3513,12 +3562,14 @@ static void test_read_status_register(const TestReadStatusRegCfg *const cfg)
                 .withOutputParameterReturning("data", cfg->i2c_read_data, cfg->i2c_data_len)
                 .withParameter("length", cfg->i2c_data_len)
                 .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         } else {
             mock()
                 .expectOneCall("mock_sht3x_i2c_read")
                 .withParameter("length", cfg->i2c_data_len)
                 .withParameter("i2c_addr", SHT3X_TEST_DEFAULT_I2C_ADDR)
+                .withParameter("user_data", i2c_read_user_data)
                 .ignoreOtherParameters();
         }
     }

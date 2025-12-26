@@ -581,7 +581,7 @@ static void start_meas_seq(SHT3X self, SHT3XMeasCompleteCb cb, void *cb_user_dat
 static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_MSB, SHT3X_FETCH_PERIODIC_MEAS_DATA_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -594,7 +594,7 @@ static void send_fetch_data_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, v
  */
 static void send_read_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
-    self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, cb, user_data);
+    self->i2c_read(self->i2c_read_buf, length, self->i2c_addr, self->i2c_read_user_data, cb, user_data);
 }
 
 /**
@@ -607,7 +607,7 @@ static void send_read_cmd(SHT3X self, size_t length, SHT3X_I2CTransactionComplet
 static void send_read_status_reg_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_READ_STATUS_REG_CMD_MSB, SHT3X_READ_STATUS_REG_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -620,7 +620,7 @@ static void send_read_status_reg_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb 
 static void send_soft_reset_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_SOFT_RESET_CMD_MSB, SHT3X_SOFT_RESET_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -649,7 +649,7 @@ static uint8_t send_single_shot_meas_cmd(SHT3X self, uint8_t repeatability, uint
         /* Invalid repeatability or clock stretching option. */
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -679,7 +679,7 @@ static uint8_t send_start_periodic_meas_cmd(SHT3X self, uint8_t repeatability, u
         /* Invalid repeatability or MPS option. */
         return SHT3X_RESULT_CODE_INVALID_ARG;
     }
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
     return SHT3X_RESULT_CODE_OK;
 }
 
@@ -693,7 +693,7 @@ static uint8_t send_start_periodic_meas_cmd(SHT3X self, uint8_t repeatability, u
 static void send_start_periodic_meas_art_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_ART_CMD_MSB, SHT3X_ART_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -706,7 +706,7 @@ static void send_start_periodic_meas_art_cmd(SHT3X self, SHT3X_I2CTransactionCom
 static void send_stop_periodic_meas_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_STOP_PERIODIC_MEAS_CMD_MSB, SHT3X_STOP_PERIODIC_MEAS_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -719,7 +719,7 @@ static void send_stop_periodic_meas_cmd(SHT3X self, SHT3X_I2CTransactionComplete
 static void send_enable_heater_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_ENABLE_HEATER_CMD_MSB, SHT3X_ENABLE_HEATER_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -732,7 +732,7 @@ static void send_enable_heater_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb
 static void send_disable_heater_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_DISABLE_HEATER_CMD_MSB, SHT3X_DISABLE_HEATER_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -745,7 +745,7 @@ static void send_disable_heater_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb c
 static void send_clear_status_reg_cmd(SHT3X self, SHT3X_I2CTransactionCompleteCb cb, void *user_data)
 {
     uint8_t cmd[2] = {SHT3X_CLEAR_STATUS_REGISTER_CMD_MSB, SHT3X_CLEAR_STATUS_REGISTER_CMD_LSB};
-    self->i2c_write(cmd, 2, self->i2c_addr, cb, user_data);
+    self->i2c_write(cmd, 2, self->i2c_addr, self->i2c_write_user_data, cb, user_data);
 }
 
 /**
@@ -1008,7 +1008,9 @@ uint8_t sht3x_create(SHT3X *const instance, const SHT3XInitConfig *const cfg)
     }
 
     (*instance)->i2c_write = cfg->i2c_write;
+    (*instance)->i2c_write_user_data = cfg->i2c_write_user_data;
     (*instance)->i2c_read = cfg->i2c_read;
+    (*instance)->i2c_read_user_data = cfg->i2c_read_user_data;
     (*instance)->start_timer = cfg->start_timer;
     (*instance)->i2c_addr = cfg->i2c_addr;
     reset_sequence_data(*instance);
