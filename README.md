@@ -12,7 +12,7 @@ Add the following to your build:
 
 # Usage
 In order to use this driver, you need to implement the following functions:
-```
+```c
 void sht3x_i2c_write(uint8_t *data, size_t length, uint8_t i2c_addr, void *user_data, SHT3X_I2CTransactionCompleteCb cb, void *cb_user_data);
 void sht3x_i2c_read(uint8_t *data, size_t length, uint8_t i2c_addr, void *user_data, SHT3X_I2CTransactionCompleteCb cb, void *cb_user_data);
 void sht3x_start_timer(uint32_t duration_ms, void *user_data, SHT3XTimerExpiredCb cb, void *cb_user_data);
@@ -20,7 +20,7 @@ void *sht3x_get_instance_memory(void *user_data);
 ```
 
 Pass your implementations as function pointers when creating an instance:
-```
+```c
 SHT3XInitConfig cfg = {
     .get_instance_memory = sht3x_get_instance_memory,
     .get_instance_memory_user_data = NULL, // Optional
@@ -39,7 +39,7 @@ if (rc != SHT3X_RESULT_CODE_OK) {
 
 ## Examples
 Perform a single shot measurement of temperature and humidity:
-```
+```c
 static void single_shot_complete(uint8_t result_code, SHT3XMeasurement *meas, void *user_data) {
     if (result_code == SHT3X_RESULT_CODE_OK) {
         float temp = meas->temperature; // Temperature in degrees Celsius
@@ -72,7 +72,7 @@ void some_func() {
 ```
 
 Start periodic measurements and read them out regularly:
-```
+```c
 static void periodic_meas_started(uint8_t result_code, void *user_data) {
     if (result_code == SHT3X_RESULT_CODE_OK) {
         // Handle completion of starting periodic measurement
