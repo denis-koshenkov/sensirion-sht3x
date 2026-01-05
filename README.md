@@ -104,7 +104,7 @@ void some_func() {
         // Error handling
     }
 
-    /*  High repeatability, 4 measurements per second */
+    /*  Medium repeatability, 4 measurements per second */
     rc = sht3x_start_periodic_measurement(sht3x, SHT3X_MEAS_REPEATABILITY_MEDIUM, SHT3X_MPS_4, periodic_meas_started, NULL);
     if (rc != SHT3X_RESULT_CODE_OK) {
         // Error handling
